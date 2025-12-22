@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  phone_number String   @id
+  current_step String   @default("START")
+  role         String?  // 'landlord' | 'tenant'
+  metadata     Json     @default("{}")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Apartment {
+  id          String   @id @default(uuid())
+  landlord_id String
+  city        String
+  price       Int
+  rooms       Float
+  description String?
+  images      String[]
+  createdAt   DateTime @default(now())
+
+  @@map("apartments")
+}
