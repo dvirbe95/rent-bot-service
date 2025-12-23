@@ -21,12 +21,13 @@ model User {
 
 model Apartment {
   id          String   @id @default(uuid())
-  landlord_id String
   city        String
-  price       Int
+  price       Float
   rooms       Float
   description String?
-  images      String[]
+  address     String?
+  phone_number String  // המספר של המשכיר
+  embedding   Unsupported("vector(768)")? // וקטור עבור Gemini text-embedding-004
   createdAt   DateTime @default(now())
 
   @@map("apartments")
