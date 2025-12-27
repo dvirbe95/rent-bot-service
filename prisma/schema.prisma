@@ -8,27 +8,32 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  phone_number String   @id
-  current_step String   @default("START")
-  role         String?  // 'landlord' | 'tenant'
-  metadata     Json     @default("{}")
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@map("users")
-}
-
 model Apartment {
-  id          String   @id @default(uuid())
-  city        String
-  price       Float
-  rooms       Float
-  description String?
-  address     String?
-  phone_number String  // המספר של המשכיר
-  embedding   Unsupported("vector(768)")? // וקטור עבור Gemini text-embedding-004
-  createdAt   DateTime @default(now())
+  id            String   @id @default(uuid())
+  city          String
+  price         Float
+  rooms         Float
+  description   String?
+  address       String?
+  phone_number  String   // מספר המשכיר/מתווך
+  
+  // שדות חדשים למדיה ויומן
+  images        String[] // מערך של URLS
+  video_url     String?  // לינק לסרטון אחד מרכזי
+  calendar_link String?  // לינק ל-Cal.com או Google Calendar
+  
+  embedding     Unsupported("vector(768)")?
+  createdAt     DateTime @default(now())
 
   @@map("apartments")
+}
+
+model User {
+  phone         String   @id
+  current_step  String   @default("IDLE")
+  metadata      Json?    // כאן נשמור את ה-apartment_id הנוכחי בשיחה
+  role          String   @default("tenant") // 'landlord' or 'tenant'
+  createdAt     DateTime @default(now())
+
+  @@map("users")
 }

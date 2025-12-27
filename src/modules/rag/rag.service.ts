@@ -17,15 +17,17 @@ export class RagService {
             });
 
             const prompt = `
-                Extract apartment details from the following Hebrew text into a JSON object.
-                Fields: 
-                "city" (string, city name in Hebrew), 
-                "price" (number, monthly rent in NIS), 
-                "rooms" (number, number of rooms), 
-                "description" (string, short summary).
-                If a field is missing, use null.
-                
+                Analyze this Hebrew text about an apartment and extract details into JSON.
+                JSON Structure:
+                {
+                    "city": "string",
+                    "price": number,
+                    "rooms": number,
+                    "description": "string",
+                    "suggest_media": true
+                }
                 Text: "${text}"
+                Return ONLY JSON.
             `;
 
             const result = await model.generateContent({
@@ -49,6 +51,37 @@ export class RagService {
                 console.log("💡 Tip: Try checking if your API Key is restricted to a specific project or region.");
             }
             return null;
+        }
+    }
+
+    async answerQuestionAboutApartment(question: string, apartment: any) {
+        try {
+            const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const prompt = `
+                You are a real estate assistant for this apartment:
+                City: ${apartment.city}, Price: ${apartment.price}, Details: ${apartment.description}.
+                
+                User Question: "${question}"
+
+                Instructions:
+                1. Answer the question in Hebrew based ONLY on the details provided.
+                2. Action logic:
+                   - If the user explicitly asks for photos/images, set action to "SEND_IMAGES".
+                   - If the user expresses clear interest (e.g., "I want it", "How do I see it?", "Can we meet?") OR if you have finished answering all their technical questions and they seem satisfied, set action to "BOOK_TOUR".
+                   - Otherwise, set action to "NONE".
+
+                Return ONLY JSON:
+                {
+                    "answer": "Friendly Hebrew answer",
+                    "action": "SEND_IMAGES" | "BOOK_TOUR" | "NONE"
+                }
+            `;
+
+            const result = await model.generateContent(prompt);
+            const responseText = result.response.text().replace(/```json|```/g, "").trim();
+            return JSON.parse(responseText);
+        } catch (error) {
+            return { answer: "חלה שגיאה בחיבור לבינה המלאכותית.", action: "NONE" };
         }
     }
 
