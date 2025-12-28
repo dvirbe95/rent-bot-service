@@ -4,7 +4,7 @@ export class RagService {
     private genAI: GoogleGenerativeAI;
 
     constructor() {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.GEMINI_API_KEY1;
         if (!apiKey) throw new Error("GEMINI_API_KEY is missing in .env");
         this.genAI = new GoogleGenerativeAI(apiKey);
     }
@@ -82,6 +82,63 @@ export class RagService {
             return JSON.parse(responseText);
         } catch (error) {
             return { answer: "חלה שגיאה בחיבור לבינה המלאכותית.", action: "NONE" };
+        }
+    }
+
+    // src/modules/rag/rag.service.ts
+
+    async extractAvailability(text: string) {
+        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `
+            Analyze the following Hebrew text and extract specific available time slots for an apartment viewing.
+            Convert relative dates (like "tomorrow" or "Friday") to actual dates based on today's date: ${new Date().toLocaleDateString()}.
+            
+            Text: "${text}"
+            
+            Return ONLY a JSON array of objects:
+            [{"start": "YYYY-MM-DDTHH:mm:00", "end": "YYYY-MM-DDTHH:mm:00"}]
+        `;
+        const result = await model.generateContent(prompt);
+        return JSON.parse(result.response.text().replace(/```json|```/g, ""));
+    }
+
+    async extractPropertyUpdates(text: string) {
+        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `
+            The user wants to update their apartment details. Extract the changes from this text: "${text}"
+            Map them to these fields: price (number), description (string), rooms (number).
+            Return ONLY JSON of the changed fields. Example: {"price": 5500}
+        `;
+        const result = await model.generateContent(prompt);
+        return JSON.parse(result.response.text().replace(/```json|```/g, ""));
+    }
+
+    async extractSingleSlot(userText: string, availability: any[]) {
+        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        
+        const prompt = `
+            You are a scheduling assistant. 
+            Available slots for the apartment: ${JSON.stringify(availability)}
+            User message: "${userText}"
+            Today's date: ${new Date().toISOString()}
+
+            Task:
+            1. Identify which available slot the user is choosing.
+            2. If the user mentions a specific time from the list, return that object.
+            3. If the user is vague but it matches one slot (e.g., "Sunday" when there's only one Sunday), return it.
+            
+            Return ONLY the JSON object of the chosen slot from the list. 
+            If no match is found, return "null".
+        `;
+
+        try {
+            const result = await model.generateContent(prompt);
+            const text = result.response.text().replace(/```json|```/g, "").trim();
+            if (text === "null") return null;
+            return JSON.parse(text);
+        } catch (error) {
+            console.error("Error extracting single slot:", error);
+            return null;
         }
     }
 

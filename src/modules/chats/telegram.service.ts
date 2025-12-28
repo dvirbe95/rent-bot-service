@@ -14,14 +14,31 @@ export class TelegramService {
 // src/modules/telegram/telegram.service.ts
 
     async init() {
-        // טיפול בטקסט (כמו שהיה)
+    // 1. טיפול בלינקים עמוקים (Deep Links) - t.me/bot?start=ID
+        this.bot.start(async (ctx) => {
+            const chatId = ctx.chat.id.toString();
+            const payload = ctx.startPayload; // מחלץ את ה-shortId מהלינק
+
+            if (payload) {
+                // שולחים ל-controller הודעה מדומה כדי שיפתח את הדירה
+                const response = await this.controller.handleMessage(chatId, `דירה ${payload}`, ctx.from.first_name);
+                await this.sendResponse(ctx, response);
+            } else {
+                await ctx.reply(`היי ${ctx.from.first_name}! שלח לי תיאור דירה לפרסום או מזהה דירה לחיפוש.`);
+            }
+        });
+
+        // 2. טיפול בטקסט חופשי (חיפוש, שאלות, תיאום)
         this.bot.on('text', async (ctx) => {
             const chatId = ctx.chat.id.toString();
+            // מוודא שזה לא פקודת סטארט שכבר טופלה
+            if (ctx.message.text.startsWith('/start')) return;
+
             const response = await this.controller.handleMessage(chatId, ctx.message.text, ctx.from.first_name);
             await this.sendResponse(ctx, response);
         });
 
-        // טיפול בתמונות, סרטונים ומסמכים
+        // 3. טיפול במדיה
         this.bot.on(['photo', 'video', 'document'], async (ctx) => {
             const chatId = ctx.chat.id.toString();
             let fileId = '';

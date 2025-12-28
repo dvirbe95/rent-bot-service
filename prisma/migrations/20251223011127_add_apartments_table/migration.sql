@@ -7,6 +7,10 @@
 
 */
 -- AlterTable
+-- 1. קודם כל מפעילים את התוסף
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- 2. עכשיו אפשר לבצע שינויים בטבלה שמשתמשים ב-vector
 ALTER TABLE "apartments" DROP COLUMN "images",
 DROP COLUMN "landlord_id",
 ADD COLUMN     "address" TEXT,

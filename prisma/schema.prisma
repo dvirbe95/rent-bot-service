@@ -16,6 +16,7 @@ model Apartment {
   description   String?
   address       String?
   phone_number  String   // מספר המשכיר/מתווך
+  availability  Json?
   
   // שדות חדשים למדיה ויומן
   images        String[] // מערך של URLS

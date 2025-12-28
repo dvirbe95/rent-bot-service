@@ -5,10 +5,10 @@ export class WhatsAppRepository {
 
     async getOrCreateUser(phone: string) {
         return await this.prisma.user.upsert({
-            where: { phone_number: phone },
+            where: { phone: phone },
             update: {}, // אם קיים, אל תשנה כלום
             create: { 
-                phone_number: phone, 
+                phone: phone, 
                 current_step: 'START' 
             }
         });
@@ -16,7 +16,7 @@ export class WhatsAppRepository {
 
     async updateStep(phone: string, step: string, metadata: any = {}) {
         return await this.prisma.user.update({
-            where: { phone_number: phone },
+            where: { phone: phone },
             data: { 
                 current_step: step,
                 metadata: metadata 
