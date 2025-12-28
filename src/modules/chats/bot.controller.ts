@@ -11,181 +11,202 @@ export class BotController {
     private calendarService = new CalendarService();
 
     async handleMessage(chatId: string, text: string, userName: string) {
-        const user = await this.userRepository.getOrCreateUser(chatId);
-        const cleanText = text.trim().toLowerCase();
-        const lastApartmentId = (user.metadata as any)?.last_published_id;
-        const isSearch = text.startsWith('דירה ') || /^[a-f0-9-]{6,15}$/i.test(text);
-        // בתוך handleMessage
-        if (isSearch) {
-            const shortId = text.replace('דירה ', '').trim();
-            const apartment = await this.apartmentRepository.findApartmentById(shortId) || 
-                              await this.apartmentRepository.getById(shortId);
-
-            if (apartment) {
-                // עדכון הסטטוס ב-DB - זה השלב הקריטי!
-                await this.userRepository.updateStep(chatId, 'TALKING_ABOUT_APARTMENT', {
-                    active_apartment_id: apartment.id // שומרים את ה-ID כדי שה-AI ידע על מה מדברים
-                });
-
-                const availability = (apartment as any).availability;
-
-                // החזרת פרטי הדירה + השעות הזמינות
-                const availabilityText = this.formatAvailability(availability);
-                return { 
-                    text: `מצאתי את הדירה ב-${apartment.city}!\n${apartment.description}\n\n${availabilityText}`,
-                    action: 'OFFER_TOUR' 
-                };
-            }
-        }
-
-            // --- תרחיש עדכון נכס קיים (למשכיר) ---
-            if (lastApartmentId && (cleanText.includes("עדכן") || cleanText.includes("שנה"))) {
-                const updates = await this.ragService.extractPropertyUpdates(text);
-                await this.apartmentRepository.updateApartment(lastApartmentId, updates);
-                return { text: "הפרטים עודכנו בהצלחה! 📝" };
-            }
-
-            // --- תרחיש הגדרת זמינות לסיורים ---
-            if (lastApartmentId && (cleanText.includes("פנוי") || cleanText.includes("זמינות"))) {
-                const slots = await this.ragService.extractAvailability(text);
-                await this.apartmentRepository.updateApartment(lastApartmentId, { availability: slots });
-                return { text: `מעולה! הגדרתי שאתה פנוי במועדים האלו. שוכרים יוכלו לתאם איתך עכשיו. 📅` };
-            }
-        console.log(`DEBUG: [${user.current_step}] ${userName}: ${cleanText}`);
-
-            // --- 1. אם המשתמש בשלב אישור - בודקים קודם כל את התשובה שלו ---
-            if (user.current_step === 'CONFIRM_DETAILS') {
-                 // בדיקה אם המשתמש שלח זמינות לפני שהוא אמר "כן"
-                if (cleanText.includes("פנוי") || cleanText.includes("זמינות") || cleanText.includes("שעות")) {
-                    const slots = await this.ragService.extractAvailability(text);
-                    if (slots && slots.length > 0) {
-                        const currentMetadata = (user.metadata as any) || {};
-                        await this.userRepository.updateStep(chatId, 'CONFIRM_DETAILS', {
-                            ...currentMetadata,
-                            availability: slots // שמירת השעות ב-Metadata זמני
-                        });
-                        return { text: `מעולה, רשמתי את השעות! 📅\nהאם תרצה לאשר את פרסום המודעה עכשיו? (כתוב "כן")` };
-                    }
-                }
-
-                if (cleanText === "כן" || cleanText.includes("כן") || cleanText.includes("מאשר")) {
-                    const details = user.metadata as any;
-                    const media = details.media || [];
-                    
-                    const fullInfo = `${details.city} ${details.rooms} חדרים ${details.description}`;
-                    const embedding = await this.ragService.generateEmbedding(fullInfo);
-
-                    const newApartment = await this.apartmentRepository.createApartment({
-                        ...details,
-                        images: media.filter((m: any) => m.type === 'image').map((m: any) => m.fileId),
-                        availability: details.availability, // <--- כאן מוודאים שזה עובר
-                        videos: media.filter((m: any) => m.type === 'video').map((m: any) => m.fileId),
-                        phone_number: chatId
-                    }, embedding);
-
-                    // עדכון סטטוס ל-IDLE אבל שומרים את ה-ID של הדירה האחרונה כדי לאפשר הוספת תמונות גם אחרי
-                    await this.userRepository.updateStep(chatId, 'START', { last_published_id: newApartment.id });
-                    
-                    const shortId = newApartment.id.split('-')[0];
-                    const botUsername = "dvir_rent_bot"; // TODO - להחליף לשם המשתמש האמיתי של הבוט
-                    const deepLink = `https://t.me/${botUsername}?start=${shortId}`;
-                    return { 
-                        text: `הדירה פורסמה בהצלחה! 🎉\n\n` +
-                                `🏠 מזהה דירה: ${shortId}\n` +
-                                `🔗 **לינק ישיר לשיתוף (שלח לשוכרים):**\n${deepLink}\n\n` +
-                                `💡 טיפ: תוכל לשלוח לי עוד תמונות/סרטונים עכשיו והם יתווספו למודעה באופן אוטומטי.`,
-                        action: 'SUCCESS' 
-                    };
-            } 
-            
-            if (cleanText === "לא" || cleanText.includes("לא") || cleanText.includes("בטל")) {
-                await this.userRepository.updateStep(chatId, 'START', {});
-                return { text: "הפרסום בוטל. אפשר לשלוח תיאור חדש.", action: null };
-            }
-
-            // אם הוא בסטטוס אישור וכתב משהו אחר - רק אז מחזירים את השאלה
-            return { text: "זיהיתי פרטי דירה קודם, האם לאשר את הפרסום? (ענה 'כן' או 'לא')", action: null };
-        }
-
-        // --- 2. זיהוי כניסה לדירה (שוכר) ---
-        const apartmentIdMatch = text.match(/דירה\s+([a-zA-Z0-9-]+)/i);
-        if (apartmentIdMatch) {
-            const shortId = apartmentIdMatch[1];            
-            const apartment = await this.apartmentRepository.findApartmentById(shortId);
-            if (apartment) {
-                await this.userRepository.updateStep(chatId, 'TALKING_ABOUT_APARTMENT', { active_apartment_id: apartment.id });
-                
-                let welcomeMsg = `שלום! הגעת לבוט של הדירה ב-${apartment.city}.`;
-                
-                if (apartment.images?.length > 0 || apartment.video_url) {
-                    welcomeMsg += `\n\nיש לי ${apartment.images.length} תמונות ו-${apartment.video_url} סרטונים של הנכס. לשלוח לך אותם? (ענה "כן" או שאל שאלה)`;
-                    return { text: welcomeMsg, action: 'OFFER_MEDIA', data: apartment };
-                }
-
-                return { text: `${welcomeMsg} מה תרצה לדעת?`, action: null };
-            }
-        }
-
-        // --- 3. לוגיקה לשוכר בשיחה פעילה ---
-        if (user.current_step === 'TALKING_ABOUT_APARTMENT') { //&& (cleanText.includes("תאם") || cleanText.includes("מתאים לי"))
-           const activeId = (user.metadata as any)?.active_apartment_id;
-            const apartment = await this.apartmentRepository.getById(activeId);
-            if (!apartment) return { text: "לא מצאתי את הדירה המדוברת." };
-
-            if(text.includes("סיום")) {
-                await this.userRepository.updateStep(chatId, 'START', {});
-                return { text: "סיימנו את השיחה על הדירה. איך אוכל לעזור עוד?" };
-            }
-
-            // א. בדיקה אם המשתמש רוצה לתאם (לפי מילות מפתח)
-            const isBookingIntent = (cleanText.includes("תאם") || cleanText.includes("מתאים לי") || cleanText.includes("לקבוע"));
-
-            if (isBookingIntent) {
-                const availability = (apartment as any).availability;
-                const selectedSlot = await this.ragService.extractSingleSlot(text, availability);
-                
-                if (selectedSlot) {
-                    await this.calendarService.createMeeting(apartment, selectedSlot, userName);
-                    return { 
-                        text: `הפגישה נקבעה! שלחתי עדכון למשכיר. נתראה ב-${selectedSlot.start}!`,
-                        action: 'NOTIFY_LANDLORD',
-                        data: {
-                            landlordChatId: apartment.phone_number,
-                            message: `תיאום חדש! 🎉\n${userName} קבע סיור ב-${apartment.city} למועד: ${selectedSlot.start}`
-                        }
-                    };
-                } else {
-                    return { text: "לא הצלחתי להבין איזה מועד בחרת. תוכל לכתוב למשל 'אני רוצה את האופציה הראשונה'?" };
-                }
-            }
-
-            // ב. אם זה לא תיאום - זו שאלה על הנכס (שימוש ב-AI)
-            const aiResponse = await this.ragService.answerQuestionAboutApartment(text, apartment);
-            return { 
-                text: aiResponse.answer, 
-                action: aiResponse.action, 
-                data: apartment // מחזיר את הדירה למקרה שצריך לשלוח תמונות (SEND_IMAGES)
-            };
-        }
-
-        // --- 4. זיהוי תיאור דירה חדשה (רק אם לא קרה כלום למעלה) ---
-        if (text.length > 40 && user.current_step === 'START') {
-            const details = await this.ragService.extractApartmentDetails(text);
-            if (details && details.city) {
-                await this.userRepository.updateStep(chatId, 'CONFIRM_DETAILS', details);
-                return { 
-                    text: `זיהיתי דירה ב-${details.city}:\n💰 מחיר: ${details.price}\n🏠 חדרים: ${details.rooms}\n\n📸 **זה הזמן לשלוח תמונות או סרטונים!**\nבסיום, ענה "כן" כדי לאשר את הפרסום.`,
-                    action: null 
-                };
-            }
-        }
-
-        // --- 5. ברירת מחדל ---
-        return { text: `היי ${userName}! שלח לי תיאור דירה לפרסום או מזהה דירה.`, action: null };
+    const user = await this.userRepository.getOrCreateUser(chatId);
+    const cleanText = text.trim().toLowerCase();
+    
+    // 1. עדיפות עליונה: חיפוש דירה / פתיחת לינק
+    const isSearch = text.startsWith('דירה ') || /^[a-f0-9-]{6,15}$/i.test(text);
+    if (isSearch) {
+        return await this.handleApartmentLookup(chatId, text);
     }
 
+    // 2. טיפול לפי סטטוס נוכחי (State Machine)
+    switch (user.current_step) {
+        case 'CONFIRM_DETAILS':
+            return await this.handleConfirmDetails(chatId, text, user);
+            
+        case 'TALKING_ABOUT_APARTMENT':
+            return await this.handleActiveConversation(chatId, text, user, userName);
+            
+        default:
+            return await this.handleInitialState(chatId, text, user, userName);
+    }
+}
+
+/** * פתיחת דירה לפי מזהה
+ */
+   async handleApartmentLookup(chatId: string, text: string) {
+    const shortId = text.replace('דירה ', '').trim();
+    
+    // חיפוש הדירה בבסיס הנתונים
+    const apartment = await this.apartmentRepository.findApartmentById(shortId) || 
+                      await this.apartmentRepository.getById(shortId);
+
+    if (!apartment) {
+        return { text: "לא מצאתי דירה עם המזהה הזה. וודא שהקוד נכון.", action: null };
+    }
+
+    // עדכון הסטטוס כדי שהבוט יזכור על איזו דירה מדברים בשיחה
+    await this.userRepository.updateStep(chatId, 'TALKING_ABOUT_APARTMENT', { 
+        active_apartment_id: apartment.id 
+    });
+
+    // בניית התפריט הידידותי
+    const menuButtons = [
+        [{ text: "📸 שלח לי תמונות וסרטונים", callback_data: "get_media" }],
+        [{ text: "📅 תאם סיור בדירה", callback_data: "get_slots" }],
+        [{ text: "❓ שאל שאלה על הנכס", callback_data: "ask_question" }]
+    ];
+
+    // הודעת פתיחה מרשימה
+    const welcomeMsg = `🏠 **מצאתי את הדירה ב-${apartment.city}!**\n\n` +
+                       `${apartment.description}\n\n` +
+                       `מה תרצה לעשות עכשיו? בחר מהאפשרויות למטה:`;
+    
+    return { 
+        text: welcomeMsg, 
+        buttons: menuButtons, // הוספת הכפתורים לאובייקט התגובה
+        action: 'SHOW_MENU',  // עדכון ה-action (ה-TelegramService ידע לטפל בזה)
+        data: apartment 
+    };
+}
+
+/**
+ * שלב אישור פרסום הדירה
+ */
+private async handleConfirmDetails(chatId: string, text: string, user: any) {
+    const cleanText = text.toLowerCase();
+
+    // בדיקת עדכון זמינות תוך כדי אישור
+    if (cleanText.includes("פנוי") || cleanText.includes("זמינות")) {
+        const slots = await this.ragService.extractAvailability(text);
+        if (slots?.length) {
+            await this.userRepository.updateStep(chatId, 'CONFIRM_DETAILS', { 
+                ...(user.metadata as any), 
+                availability: slots 
+            });
+            return { text: "מעולה, רשמתי את השעות! 📅\nהאם תרצה לאשר את הפרסום כעת? (כתוב 'כן')" };
+        }
+    }
+
+    // ביטול
+    if (["לא", "בטל", "ביטול"].some(word => cleanText.includes(word))) {
+        await this.userRepository.updateStep(chatId, 'START', {});
+        return { text: "הפרסום בוטל. אפשר לשלוח תיאור חדש.", action: null };
+    }
+
+    // אישור ושמירה
+    if (["כן", "מאשר", "אוקיי"].some(word => cleanText.includes(word))) {
+        return await this.finalizeApartmentCreation(chatId, user);
+    }
+
+    return { text: "זיהיתי פרטי דירה. האם לאשר את הפרסום? (כן/לא)", action: null };
+}
+
+/**
+ * שיחה פעילה בין שוכר לדירה
+ */
+private async handleActiveConversation(chatId: string, text: string, user: any, userName: string) {
+    if (text.includes("סיום")) {
+        await this.userRepository.updateStep(chatId, 'START', {});
+        return { text: "סיימנו את השיחה על הדירה. איך אוכל לעזור עוד?" };
+    }
+
+    const activeId = (user.metadata as any)?.active_apartment_id;
+    const apartment = await this.apartmentRepository.getById(activeId) as any;
+    if (!apartment) return { text: "לא מצאתי את הדירה המדוברת." };
+
+    const cleanText = text.toLowerCase();
+    const isBookingIntent = ["תאם", "מתאים", "לקבוע"].some(word => cleanText.includes(word));
+
+    if (isBookingIntent) {
+        const selectedSlot = await this.ragService.extractSingleSlot(text, apartment.availability);
+        if (selectedSlot) {
+            await this.calendarService.createMeeting(apartment, selectedSlot, userName);
+
+            // 2. שליחת מייל למשכיר (כאן הקריאה החדשה)
+            if (apartment.owner_email) { // וודא שיש לך שדה כזה ב-DB
+                await this.calendarService.sendEmailNotification(apartment.owner_email, {
+                    city: apartment.city,
+                    tenantName: userName,
+                    start: selectedSlot.start
+                });
+            }
+
+            return { 
+                text: `הפגישה נקבעה! שלחתי עדכון למשכיר. נתראה ב-${selectedSlot.start}!`,
+                action: 'NOTIFY_LANDLORD',
+                data: {
+                    landlordChatId: apartment.phone_number,
+                    message: `תיאום חדש! 🎉\n${userName} קבע סיור ב-${apartment.city} למועד: ${selectedSlot.start}`
+                }
+            };
+        }
+        return { text: "לא הצלחתי להבין איזה מועד בחרת. תוכל לציין את מספר האופציה?" };
+    }
+
+    const aiResponse = await this.ragService.answerQuestionAboutApartment(text, apartment);
+    return { text: aiResponse.answer, action: aiResponse.action, data: apartment };
+}
+
+/**
+ * מצב התחלתי - זיהוי תיאור חדש או עדכון זמינות למשכיר קיים
+ */
+private async handleInitialState(chatId: string, text: string, user: any, userName: string) {
+    const lastApartmentId = (user.metadata as any)?.last_published_id;
+    const cleanText = text.toLowerCase();
+
+    // עדכון זמינות למשכיר קיים
+    if (lastApartmentId && (cleanText.includes("פנוי") || cleanText.includes("זמינות"))) {
+        const slots = await this.ragService.extractAvailability(text);
+        await this.apartmentRepository.updateApartment(lastApartmentId, { availability: slots });
+        return { text: "מעולה! הגדרתי שאתה פנוי במועדים האלו. שוכרים יכולים לתאם כעת. 📅" };
+    }
+
+    // זיהוי תיאור דירה חדשה
+    if (text.length > 40) {
+        const details = await this.ragService.extractApartmentDetails(text);
+        if (details?.city) {
+            await this.userRepository.updateStep(chatId, 'CONFIRM_DETAILS', details);
+            return { 
+                text: `זיהיתי דירה ב-${details.city}:\n💰 מחיר: ${details.price}\n🏠 חדרים: ${details.rooms}\n\n📸 שלח תמונות עכשיו, ובסיום כתוב "כן" לאישור.`,
+                action: null 
+            };
+        }
+    }
+
+    return { text: `היי ${userName}! שלח לי תיאור דירה לפרסום או מזהה דירה לחיפוש.`, action: null };
+}
+
+/**
+ * שמירה סופית של הדירה בבסיס הנתונים
+ */
+private async finalizeApartmentCreation(chatId: string, user: any) {
+    const details = user.metadata as any;
+    const media = details.media || [];
+    const fullInfo = `${details.city} ${details.rooms} חדרים ${details.description}`;
+    const embedding = await this.ragService.generateEmbedding(fullInfo);
+
+    const newApartment = await this.apartmentRepository.createApartment({
+        ...details,
+        images: media.filter((m: any) => m.type === 'image').map((m: any) => m.fileId),
+        videos: media.filter((m: any) => m.type === 'video').map((m: any) => m.fileId),
+        phone_number: chatId
+    }, embedding);
+
+    await this.userRepository.updateStep(chatId, 'START', { last_published_id: newApartment.id });
+    
+    const shortId = newApartment.id.split('-')[0];
+    const deepLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
+    
+    return { 
+        text: `הדירה פורסמה בהצלחה! 🎉\nמזהה: ${shortId}\nלינק לשיתוף: ${deepLink}`,
+        action: 'SUCCESS' 
+    };
+}
+
 // פונקציה לעיצוב השעות בצורה יפה לשוכר
-    private formatAvailability(availability: any): string {
+    formatAvailability(availability: any): string {
         if (!availability || !Array.isArray(availability) || availability.length === 0) {
             return "כרגע לא הוגדרו שעות ביקור. תרצה שאשאיר הודעה למפרסם?";
         }
