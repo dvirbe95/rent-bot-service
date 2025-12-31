@@ -53,6 +53,10 @@ export class BotController {
 
     // בניית התפריט הידידותי
     const menuButtons = [
+        [{ 
+            text: "📊 לצפייה בפרופיל נכס מלא (HTML)", 
+            web_app: { url: `https://your-domain.com/apartment-profile/${apartment.id}` } 
+        }],
         [{ text: "📸 שלח לי תמונות וסרטונים", callback_data: "get_media" }],
         [{ text: "📅 תאם סיור בדירה", callback_data: "get_slots" }],
         [{ text: "❓ שאל שאלה על הנכס", callback_data: "ask_question" }]
