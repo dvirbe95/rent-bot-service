@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Role } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -50,5 +50,15 @@ export class UserRepository {
             isActive: user.subscriptionStatus && !isExpired,
             role: user.role
         };
+    }
+
+    async updateUserRole(phone: string, role: Role) {
+        return await prisma.user.update({
+            where: { phone },
+            data: { 
+                role: role,
+                metadata: { role_selected: true } // סימון כדי שלא יראה שוב את תפריט הבחירה
+            },
+        });
     }
 }

@@ -33,19 +33,23 @@ model Apartment {
 
 model User {
   id                 String      @id @default(cuid())
-  phone              String      @unique // משמש כ-Chat ID בטלגרם/וואטסאפ
+  phone              String      @unique // Telegram Chat ID
+  email              String?     @unique // לצורך חיבור גוגל
   role               Role        @default(TENANT)
   current_step       String      @default("START")
-  metadata           Json? // שומר נתונים זמניים כמו תיאור דירה בתהליך
+  metadata           Json? 
   subscriptionStatus Boolean     @default(false)
   planExpiresAt      DateTime?
+  lastLogin          DateTime?   @default(now()) // בדיקת 30 יום
   apartments         Apartment[]
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 }
 
 enum Role {
-  TENANT
-  LANDLORD
-  AGENT
+  TENANT    // שוכר
+  BUYER     // קונה
+  LANDLORD  // משכיר (פרטי)
+  SELLER    // מוכר (פרטי)
+  AGENT     // מתווך (מקצועי)
 }

@@ -29,66 +29,141 @@ export class TelegramService implements IMessagingService {
             const chatId = ctx.chat?.id.toString();
             if (!chatId) return;
 
-            // 1. תמיד לאשר את ה-Callback כדי לבטל את השעון החול בכפתור
+            // 1. תמיד לאשר את ה-Callback כדי לבטל את השעון החול
             await ctx.answerCbQuery();
 
-            // 2. שליפת המשתמש כדי לדעת על איזו דירה הוא מסתכל כרגע
+            // 2. שליפת המשתמש
             const user = await this.userRepository.getOrCreateUser(chatId);
-            const metadata = user.metadata as any; 
+            const metadata = user.metadata as any;
+
+            // --- לוגיקה חדשה: בחירת רול (Onboarding) ---
+            
+            // א. בחירה ראשונית (שוכר/קונה מול מפרסם)
+            if (data === 'set_role_tenant') {
+                await this.userRepository.updateUserRole(chatId, 'TENANT');
+                return ctx.reply("מעולה! הגדרתי אותך כמחפש דירה. שלח לי מזהה דירה או תיאור של מה שאתה מחפש.");
+            }
+
+            if (data === 'set_role_provider') {
+                return ctx.reply("נשמח לעזור לך לפרסם! מי אתה?", {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [{ text: "🏠 אני משכיר דירה (פרטי)", callback_data: "role_landlord" }],
+                            [{ text: "💰 אני מוכר דירה (פרטי)", callback_data: "role_seller" }],
+                            [{ text: "💼 אני מתווך נדלן (מקצועי)", callback_data: "role_agent" }]
+                        ]
+                    }
+                });
+            }
+
+            // ב. הגדרת רול ספציפי למפרסם
+            if (data.startsWith('role_')) {
+                const selectedRole = data.replace('role_', '').toUpperCase();
+                await this.userRepository.updateUserRole(chatId, selectedRole);
+                
+                let welcomeMsg = "ברוך הבא! ";
+                if (selectedRole === 'AGENT') welcomeMsg += "כסוכן, תוכל לנהל נכסים ולידים. ";
+                if (selectedRole === 'SELLER') welcomeMsg += "כמוכר, תוכל לפרסם את הנכס שלך לקונים. ";
+                
+                return ctx.reply(`${welcomeMsg}\nכדי להתחיל בפרסום, שלח לי תיאור של הנכס (לפחות 40 תווים).`);
+            }
+
+            // --- לוגיקת הדירות הקיימת (עם התאמות) ---
+
             const activeId = metadata?.active_apartment_id;
-            if (!activeId) {
-                return ctx.reply("לא בחרת דירה. שלח שוב את לינק הדירה.");
+            
+            // אם המשתמש מנסה לבצע פעולת דירה בלי activeId
+            if (!activeId && ['get_media', 'get_slots', 'ask_question'].includes(data)) {
+                return ctx.reply("לא בחרת דירה. שלח שוב את לינק הדירה או המזהה שלה.");
             }
 
-            // 3. ביצוע הפעולה לפי ה-data של הכפתור
-            const apartment = await this.apartmentRepository.getById(metadata.active_apartment_id) as any;
-            if (data === 'get_media') {
-                if (apartment) {
-                    // שימוש במתודה הקיימת שלך לשליחת תמונות
-                    await this.sendMedia(chatId, apartment);
-                }
+            const apartment = activeId ? await this.apartmentRepository.getById(activeId) as any : null;
+
+            if (data === 'get_media' && apartment) {
+                await this.sendMedia(ctx.chat?.id.toString()!, apartment); // שים לב לשימוש ב-ctx כדי לשלוח לשיחה הנכונה
             }
 
-            if (data === 'get_slots') {
-                // כאן תקרא לפורמט השעות שכתבת קודם
-                // const res = this.controller.formatAvailability(apartment.availability);
-                // await ctx.reply(res);
+            if (data === 'get_slots' && apartment) {
                 const timeButtons = this.controller.generateTimeSlots(apartment.availability as any[]);
-    
-                await ctx.reply("📅 **בחר מועד לסיור בדירה:**\n(לחיצה על מועד תשלח בקשה למתווך)", {
+                await ctx.reply("📅 **בחר מועד לסיור בדירה:**\n(לחיצה על מועד תשלח בקשה למפרסם)", {
                     reply_markup: { inline_keyboard: timeButtons }
                 });
             }
             
             if (data === 'ask_question') {
-                await ctx.reply("🏠 אני מקשיב! מה תרצה לדעת על הדירה? (למשל: 'יש ועד בית?') ");
+                await ctx.reply("🏠 אני מקשיב! מה תרצה לדעת על הדירה? (למשל: 'יש חניה?') ");
             }
 
+            // לוגיקת תיאום סיור
             if (data.startsWith('book_slot_')) {
                 const selectedDate = new Date(data.replace('book_slot_', ''));
                 const timeStr = selectedDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
                 const dateStr = selectedDate.toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
 
-                // 1. שלח אישור ללקוח
-                await ctx.reply(`✅ בקשתך לסיור ביום ${dateStr} בשעה ${timeStr} נשלחה למתווך לאישור!`);
+                await ctx.reply(`✅ בקשתך לסיור ביום ${dateStr} בשעה ${timeStr} נשלחה למפרסם לאישור!`);
 
-                // 2. שלח הודעה למתווך (בעל הדירה)
-                const apartment = await this.apartmentRepository.getById(activeId) as any;
-                const agentChatId = apartment.owner.phone; // וודא שה-Schema מחזיר את זה ב-include
+                if (apartment) {
+                    // שליחה למפרסם (owner/agent)
+                    const agentChatId = apartment.phone_number; // בקוד שלך זה phone_number
 
-                await this.bot.telegram.sendMessage(agentChatId, 
-                    `🔔 **בקשה לסיור חדש!**\n\n` +
-                    `דירה: ${apartment.city}, ${apartment.id.split('-')[0]}\n` +
-                    `לקוח: ${ctx.from.first_name} (${chatId})\n` +
-                    `מועד מבוקש: ${dateStr} בשעה ${timeStr}\n\n` +
-                    `לחץ על הכפתור למטה כדי לאשר ללקוח שאתה מחכה לו.`, {
-                        reply_markup: {
-                            inline_keyboard: [[{ text: "✅ אשר הגעה", callback_data: `confirm_visit_${chatId}_${data.replace('book_slot_', '')}` }]]
+                    await this.bot.telegram.sendMessage(agentChatId, 
+                        `🔔 **בקשה לסיור חדש!**\n\n` +
+                        `דירה: ${apartment.city}, ${apartment.id.split('-')[0]}\n` +
+                        `לקוח: ${ctx.from.first_name} (${chatId})\n` +
+                        `מועד מבוקש: ${dateStr} בשעה ${timeStr}\n\n` +
+                        `לחץ על הכפתור למטה כדי לאשר לו.`, {
+                            reply_markup: {
+                                inline_keyboard: [[{ 
+                                    text: "✅ אשר הגעה", 
+                                    callback_data: `confirm_visit_${chatId}_${data.replace('book_slot_', '')}` 
+                                }]]
+                            }
                         }
-                    }
+                    );
+                }
+            }
+
+            // אישור הגעה מצד המתווך/משכיר ללקוח
+            if (data.startsWith('confirm_visit_')) {
+                const parts = data.split('_');
+                const tenantChatId = parts[2];
+                const dateRaw = parts[3];
+                
+                const confirmedDate = new Date(dateRaw);
+                const timeStr = confirmedDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+                await this.bot.telegram.sendMessage(tenantChatId, 
+                    `🎉 **המפרסם אישר את הגעתך!**\nנפגש בכתובת הנכס במועד שנקבע: בשעה ${timeStr}.`
                 );
+                
+                await ctx.reply("שלחתי אישור ללקוח! ✅");
             }
         });
+
+        // src/modules/telegram/telegram.service.ts
+
+        // מאזין לכל סוגי המדיה
+        this.bot.on(['photo', 'video', 'document'], async (ctx) => {
+            const chatId = ctx.chat.id.toString();
+            let fileId = '';
+            let type = '';
+
+            // שליפת ה-file_id (מתוך המערך של הטלגרם לוקחים את הגודל הגדול ביותר)
+            if ('photo' in ctx.message) {
+                fileId = ctx.message.photo[ctx.message.photo.length - 1].file_id;
+                type = 'image';
+            } else if ('video' in ctx.message) {
+                fileId = ctx.message.video.file_id;
+                type = 'video';
+            }
+
+            if (fileId) {
+                // קריאה לקונטרולר - כאן הקשר חייב להתקיים
+                const response = await this.controller.handleMedia(chatId, fileId, type);
+                await ctx.reply(response.text);
+            }
+        });
+        
         this.bot.launch();
     }
 

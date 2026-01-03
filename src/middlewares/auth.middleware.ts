@@ -1,22 +1,39 @@
+// src/modules/bot/auth.middleware.ts
+import { Role } from "@prisma/client";
 import { BotResponse } from "../common/interfaces/messaging.interface";
 
-const runAuthMiddleware = (user: any): BotResponse | null => {
-        // שוכרים (TENANTS) תמיד יכולים להשתמש בבוט בחינם
-        if (user.role === 'TENANT') return null;
-
-        // בדיקת תוקף מנוי למתווכים ומוכרים
+export class AuthMiddleware {
+    static async checkAccess(user: any): Promise<BotResponse | null> {
         const now = new Date();
-        const isExpired = user.planExpiresAt ? now > new Date(user.planExpiresAt) : true;
+        
+        // 1. רולים שחייבים אימות גוגל (JWT) פעם ב-30 יום
+        const professionalRoles = [Role.AGENT, Role.LANDLORD, Role.SELLER];
+        if (professionalRoles.includes(user.role)) {
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        if (!user.subscriptionStatus || isExpired) {
-            return {
-                text: `🔒 **הגישה חסומה**\n\nהיי ${user.phone}, נראה שאין לך מנוי פעיל למערכת הניהול.\n\nכדי לפרסם נכסים חדשים, להשתמש ב-AI או לקבל לידים, עליך להסדיר תשלום.`,
-                buttons: [
-                    [{ text: "💳 לתשלום וחידוש המנוי", web_app: { url: "https://your-domain.com/pay" } }],
-                    [{ text: "📞 דיבור עם נציג", callback_data: "contact_support" }]
-                ]
-            };
+            if (!user.lastLogin || new Date(user.lastLogin) < thirtyDaysAgo) {
+                return {
+                    text: `🔒 **נדרש אימות זהות**\nהיי ${user.phone}, לצורך אבטחה (ומכיוון שאתה מפרסם נכסים), עליך להתחבר עם גוגל פעם ב-30 יום.`,
+                    buttons: [[{ 
+                        text: "🔑 התחברות מהירה (Google)", 
+                        web_app: { url: `https://your-app.com/login?tid=${user.phone}` } 
+                    }]]
+                };
+            }
         }
 
-        return null;
+        // 2. בדיקת מנוי (ספציפית למתווכים בלבד - AGENT)
+        if (user.role === Role.AGENT) {
+            const isExpired = user.planExpiresAt ? now > new Date(user.planExpiresAt) : true;
+            if (!user.subscriptionStatus || isExpired) {
+                return {
+                    text: `💳 **המנוי אינו בתוקף**\nמתווכים נדרשים למנוי פעיל כדי לנהל נכסים ולצפות בלידים.`,
+                    buttons: [[{ text: "🛍️ לחידוש מנוי", web_app: { url: "https://your-app.com/pay" } }]]
+                };
+            }
+        }
+
+        return null; // מאושר
     }
+}

@@ -1,5 +1,8 @@
+// src/modules/bot/bot.controller.ts
+import { Role } from '@prisma/client';
 import { TenantFlow } from './flows/bot/tenant.flow';
 import { LandlordFlow } from './flows/bot/landlord.flow';
+import { AuthMiddleware } from '../../middlewares/auth.middleware';
 
 export class BotController {
     private tenantFlow: TenantFlow;
@@ -17,26 +20,49 @@ export class BotController {
     async handleMessage(chatId: string, text: string, userName: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
         
-        // בדיקה אם הטקסט הוא מזהה דירה או פקודת "דירה X"
-        const isSearch = text.startsWith('/start ') || /^[a-f0-9-]{6,15}$/i.test(text);
+        // --- שלב א: זיהוי תפקיד ראשוני למשתמשים חדשים ---
+        if (user.current_step === 'START' && !user.metadata?.role_selected) {
+             if (text.startsWith('/start') && text.length > 7) {
+                 // דלג על בחירת רול אם הגיע מלינק עמוק
+             } else {
+                return {
+                    text: `ברוך הבא ${userName}! איך אוכל לעזור היום?`,
+                    buttons: [
+                        [{ text: "🔍 אני מחפש דירה", callback_data: "set_role_tenant" }],
+                        [{ text: "🏠 אני מפרסם (משכיר/מוכר)", callback_data: "set_role_provider" }]
+                    ]
+                };
+             }
+        }
+
+        // --- שלב ב: בדיקת אבטחה ומנוי (הכנה למזגן) ---
+        const authError = await AuthMiddleware.checkAccess(user);
+        if (authError) return authError;
+
+        // --- שלב ג: ניתוב לוגיקה ---
+        const isSearch = text.startsWith('/start ') || text.startsWith('דירה ') || /^[a-f0-9-]{6,15}$/i.test(text);
         
         if (isSearch) {
-            // קריאה למתודה שייצרנו ב-TenantFlow
             return await this.tenantFlow.handleApartmentLookup(chatId, text);
-        }        
-        // זיהוי תפקיד המשתמש - כאן נכנסת הלוגיקה של ההרשאות
-        if (user.role === 'LANDLORD' || user.role === 'AGENT') {
+        }
+
+        // הפרדה גנרית: AGENT/LANDLORD/SELLER הולכים ל-Publisher Flow
+        const isPublisher = [Role.AGENT, Role.LANDLORD, Role.SELLER].includes(user.role);
+        
+        if (isPublisher) {
             return await this.landlordFlow.handle(chatId, text, user, userName);
         } else {
+            // TENANT / BUYER
             return await this.tenantFlow.handle(chatId, text, user, userName);
         }
     }
 
+    // שאר המתודות (handleMedia, formatAvailability) נשארות כפי שהיו בקוד המקורי שלך
     async handleMedia(chatId: string, fileId: string, type: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
-        
-        // רק מוכרים/מתווכים יכולים להעלות מדיה
-        if (user.role === 'AGENT' || user.role === 'LANDLORD') {
+        const isPublisher = [Role.AGENT, Role.LANDLORD, Role.SELLER].includes(user.role);
+
+        if (isPublisher) {
             return await this.landlordFlow.handleMedia(chatId, fileId, type, user);
         }
         return { text: "מצטער, רק מפרסמים יכולים לשלוח מדיה למערכת." };
