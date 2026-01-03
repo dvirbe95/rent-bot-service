@@ -2,16 +2,19 @@ import { Telegraf } from 'telegraf';
 import { UserRepository } from '../users/user.repository';
 import { ApartmentRepository } from '../apartments/apartment.repository';
 import { IMessagingService, BotResponse } from '../../common/interfaces/messaging.interface';
+import { CalendarService } from '../calendar/calendar.service';
 
 export class TelegramService implements IMessagingService {
     private bot: Telegraf;
     private apartmentRepository: ApartmentRepository;
     private userRepository: UserRepository;
+    private calendarService: CalendarService;
 
     constructor(token: string, private controller: any) {
         this.bot = new Telegraf(token);
         this.apartmentRepository = new ApartmentRepository();
         this.userRepository = new UserRepository();
+        this.calendarService = new CalendarService();
     }
 
     async init() {
@@ -126,17 +129,59 @@ export class TelegramService implements IMessagingService {
             // אישור הגעה מצד המתווך/משכיר ללקוח
             if (data.startsWith('confirm_visit_')) {
                 const parts = data.split('_');
-                const tenantChatId = parts[2];
-                const dateRaw = parts[3];
-                
-                const confirmedDate = new Date(dateRaw);
-                const timeStr = confirmedDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+                    const tenantChatId = parts[2];
+                    const dateRaw = parts[3];
+                    
+                    // 1. השגת נתונים מה-DB
+                    const tenantUser = await this.userRepository.getOrCreateUser(tenantChatId);
+                    const user = await this.userRepository.getOrCreateUser(chatId); // המתווך שלחץ על הכפתור
+                    // const activeId = (user as any)?.id;
+                    // const apartment = await this.apartmentRepository.getById(activeId) as any;
 
-                await this.bot.telegram.sendMessage(tenantChatId, 
-                    `🎉 **המפרסם אישר את הגעתך!**\nנפגש בכתובת הנכס במועד שנקבע: בשעה ${timeStr}.`
-                );
-                
-                await ctx.reply("שלחתי אישור ללקוח! ✅");
+                    const confirmedDate = new Date(dateRaw);
+                    const endDate = new Date(confirmedDate.getTime() + 30 * 60000); // פגישה של 30 דקות
+                    const timeStr = confirmedDate.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+
+                    try {
+                        // 2. יצירת פגישה בקלנדר לשני הצדדים
+                        // הערה: וודא שלמשתמשים יש שדה email ב-DB
+                        const emails: string[] = [];
+                        if (user.email) emails.push(user.email); 
+                        if (tenantUser.email) emails.push(tenantUser.email);
+
+                        if (emails.length > 0) {
+                            await this.calendarService.createMeeting(
+                                apartment,
+                                { start: confirmedDate.toISOString(), end: endDate.toISOString() },
+                                // tenantUser.name || 
+                                "שוכר פוטנציאלי",
+                                emails
+                            );
+
+                            // 3. שליחת התראת אימייל נוספת (אופציונלי - הקלנדר כבר שולח)
+                            if (user.email) {
+                                await this.calendarService.sendEmailNotification(user.email, {
+                                    city: 'aaa',
+                                    // tenantName: tenantUser.name || "שוכר",
+                                    start: confirmedDate
+                                });
+                            }
+                        }
+
+                        // 4. הודעות אישור בטלגרם
+                        await this.bot.telegram.sendMessage(tenantChatId, 
+                            `🎉 **המפרסם אישר את הגעתך!**\n` +
+                            `נפגש בכתובת הנכס בשעה ${timeStr}.\n` +
+                            `זימון נשלח ליומן שלך (במייל: ${tenantUser.email || 'לא מעודכן'}).`
+                        );
+                        
+                        await ctx.reply("אישרת את הסיור! הפגישה נוספה ליומן שלכם. ✅");
+
+                    } catch (error) {
+                        console.error("Error confirming visit:", error);
+                        await ctx.reply("אירעה שגיאה בעת אישור הסיור.");
+                    }
+                    
             }
         });
 

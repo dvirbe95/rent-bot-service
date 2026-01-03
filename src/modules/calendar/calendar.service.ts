@@ -36,20 +36,34 @@ export class CalendarService {
       console.error("❌ CalendarService: Failed to initialize auth", error);
     }
   }
+async createMeeting(
+  apartment: any, 
+  slot: { start: string, end: string }, 
+  tenantName: string,
+  participantEmails: string[] // הוספת מיילים של המתווך והשוכר
+) {
+  if (!this.calendar) throw new Error("Calendar API not initialized");
 
-  async createMeeting(apartment: any, slot: { start: string, end: string }, tenantName: string) {
-    if (!this.calendar) throw new Error("Calendar API not initialized");
-
-    const event = {
-      summary: `סיור בדירה: ${apartment.city}`,
-      description: `תיאום עם השוכר ${tenantName} עבור דירה ${apartment.id.split('-')[0]}`,
-      start: { dateTime: slot.start, timeZone: 'Israel' },
-      end: { dateTime: slot.end, timeZone: 'Israel' },
+  const event = {
+    summary: `🏠 סיור בדירה: ${ 'aaa'}`,
+    location: `${'aaa'}, ישראל`,
+    description: `סיור בדירה שמזהה שלה הוא .\nתיאום בין המפרסם לשוכר ${tenantName}.`,
+    start: { dateTime: slot.start, timeZone: 'Israel' },
+    end: { dateTime: slot.end, timeZone: 'Israel' },
+    // attendees: participantEmails.map(email => ({ email })), // הוספת המשתתפים
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'email', minutes: 24 * 60 },
+          { method: 'popup', minutes: 30 },
+        ],
+      },
     };
 
     return await this.calendar.events.insert({
-      calendarId: 'primary', // השתמש ב-'primary' כדי שזה ירשם ביומן של ה-Service Account
+      calendarId: 'primary',
       requestBody: event,
+      sendUpdates: 'all', // שולח הזמנה במייל למשתתפים באופן אוטומטי
     });
   }
 
@@ -58,14 +72,17 @@ export class CalendarService {
     auth: {
         user: process.env.EMAIL_USER, // המייל ממנו תצא ההודעה
         pass: process.env.EMAIL_PASS  // "סיסמת אפליקציה" מחשבון הגוגל
-      }
+    },
+    tls: {
+        rejectUnauthorized: false // מאפשר עבודה גם עם self-signed certificates
+    }
   });
 
   async sendEmailNotification(landlordEmail: string, details: any) {
       const mailOptions = {
           from: process.env.EMAIL_USER,
           to: landlordEmail,
-          subject: `תיאום חדש לדירה ב-${details.city} 🏠`,
+          subject: `תיאום חדש לדירה ב 🏠`,
           html: `
               <h1>נקבע סיור חדש!</h1>
               <p><strong>השוכר:</strong> ${details.tenantName}</p>
