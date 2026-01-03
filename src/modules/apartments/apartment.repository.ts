@@ -44,10 +44,24 @@ async createApartment(data: any, embedding: number[]): Promise<any> {
     }
 
     // שליפת דירה לפי ID מלא
-    async getById(id: string) {
-        return await this.prisma.apartment.findUnique({
-            where: { id }
+    async getById(idOrShortId: string) {
+    // 1. נסיון למצוא לפי ID מלא (למקרה שמדובר ב-UUID תקין)
+        let apartment = await this.prisma.apartment.findUnique({
+            where: { id: idOrShortId }
         });
+
+        // 2. אם לא נמצא, ננסה לחפש דירה שה-ID שלה מתחיל ב-shortId שקיבלנו
+        if (!apartment) {
+            apartment = await this.prisma.apartment.findFirst({
+                where: {
+                    id: {
+                        startsWith: idOrShortId
+                    }
+                }
+            });
+        }
+
+        return apartment;
     }
 
     async updateApartment(id: string, data: any) {

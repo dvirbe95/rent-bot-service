@@ -135,8 +135,8 @@ export class TelegramService implements IMessagingService {
                     // 1. השגת נתונים מה-DB
                     const tenantUser = await this.userRepository.getOrCreateUser(tenantChatId);
                     const user = await this.userRepository.getOrCreateUser(chatId); // המתווך שלחץ על הכפתור
-                    // const activeId = (user as any)?.id;
-                    // const apartment = await this.apartmentRepository.getById(activeId) as any;
+                    const lastApartmentId = (user.metadata as any)?.last_published_id
+                    const apartment = await this.apartmentRepository.getById(lastApartmentId) as any;
 
                     const confirmedDate = new Date(dateRaw);
                     const endDate = new Date(confirmedDate.getTime() + 30 * 60000); // פגישה של 30 דקות
@@ -153,16 +153,17 @@ export class TelegramService implements IMessagingService {
                             await this.calendarService.createMeeting(
                                 apartment,
                                 { start: confirmedDate.toISOString(), end: endDate.toISOString() },
-                                // tenantUser.name || 
+                                // tenantUser.name || "שוכר",
                                 "שוכר פוטנציאלי",
                                 emails
                             );
 
                             // 3. שליחת התראת אימייל נוספת (אופציונלי - הקלנדר כבר שולח)
                             if (user.email) {
-                                await this.calendarService.sendEmailNotification(user.email, {
-                                    city: 'aaa',
+                                await this.calendarService.sendEmailNotification(emails, {
+                                    city: apartment.city,
                                     // tenantName: tenantUser.name || "שוכר",
+                                    apartment: apartment,
                                     start: confirmedDate
                                 });
                             }
@@ -184,8 +185,6 @@ export class TelegramService implements IMessagingService {
                     
             }
         });
-
-        // src/modules/telegram/telegram.service.ts
 
         // מאזין לכל סוגי המדיה
         this.bot.on(['photo', 'video', 'document'], async (ctx) => {
