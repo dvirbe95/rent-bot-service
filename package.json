@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch index.ts",
-    "start": "tsx index.ts"
+    "start": "tsx index.ts",
+    "build": "echo 'No build needed for tsx'",
+    "postinstall": "prisma generate"
   },
   "keywords": [],
   "author": "",
