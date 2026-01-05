@@ -13,7 +13,7 @@ export class TelegramService implements IMessagingService {
   private userRepository: UserRepository;
   private calendarService: CalendarService;
 
-  constructor(token: string, private controller: any) {
+  constructor(token: string, private controller: any, private app: any) {
     this.bot = new Telegraf(token);
     this.apartmentRepository = new ApartmentRepository();
     this.userRepository = new UserRepository();
@@ -286,7 +286,21 @@ export class TelegramService implements IMessagingService {
       }
     });
 
-    this.bot.launch();
+const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה אוטומטית
+
+    if (domain) {
+      // הגדרת Webhook לסביבת Production (Render)
+      const webhookPath = `/telegraf/${this.bot.secretPathComponent()}`;
+      await this.bot.telegram.setWebhook(`${domain}${webhookPath}`);
+      this.app.use(this.bot.webhookCallback(webhookPath));
+      console.log(`📡 Webhook set to: ${domain}${webhookPath}`);
+    } else {
+      // עבודה ב-Polling לסביבת פיתוח מקומית
+      this.bot.launch();
+      console.log("🤖 Bot started in Polling mode (Local)");
+    }
+
+    // this.bot.launch();
   }
 
   async sendMessage(chatId: string, response: BotResponse) {
