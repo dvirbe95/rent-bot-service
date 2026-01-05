@@ -1,0 +1,55 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Apartment {
+  id           String  @id @default(uuid())
+  city         String
+  price        Float
+  rooms        Float
+  description  String?
+  address      String?
+  phone_number String // מספר המשכיר/מתווך
+  availability Json?
+
+  // שדות חדשים למדיה ויומן
+  images        String[] // מערך של URLS
+  video_url     String? // לינק לסרטון אחד מרכזי
+  calendar_link String? // לינק ל-Cal.com או Google Calendar
+
+  embedding Unsupported("vector(768)")?
+  createdAt DateTime                    @default(now())
+  User      User?                       @relation(fields: [userId], references: [id])
+  userId    String?
+
+  @@map("apartments")
+}
+
+model User {
+  id                 String      @id @default(cuid())
+  phone              String      @unique // Telegram Chat ID
+  email              String?     @unique // לצורך חיבור גוגל
+  role               Role        @default(TENANT)
+  current_step       String      @default("START")
+  metadata           Json? 
+  subscriptionStatus Boolean     @default(false)
+  planExpiresAt      DateTime?
+  lastLogin          DateTime?   @default(now()) // בדיקת 30 יום
+  apartments         Apartment[]
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+}
+
+enum Role {
+  TENANT    // שוכר
+  BUYER     // קונה
+  LANDLORD  // משכיר (פרטי)
+  SELLER    // מוכר (פרטי)
+  AGENT     // מתווך (מקצועי)
+}
