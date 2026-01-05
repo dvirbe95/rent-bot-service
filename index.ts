@@ -22,7 +22,7 @@ async function main() {
     const botController = new BotController(ragService, apartmentRepo, userRepo);
 
     // 3. אתחול הבוט
-    const telegramBot = new TelegramService(process.env.TELEGRAM_BOT_TOKEN!, botController);
+    const telegramBot = new TelegramService(process.env.TELEGRAM_BOT_TOKEN!, botController, app);
 
     // --- 4. הגדרת ה-Route ל-Postman (חדש) ---
     app.post('/api/users/mock-login', mockLogin);
