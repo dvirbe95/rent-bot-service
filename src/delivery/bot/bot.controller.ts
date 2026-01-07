@@ -1,24 +1,37 @@
 // src/modules/bot/bot.controller.ts
+import jwt from 'jsonwebtoken';
 import { Role } from '@prisma/client';
 import { TenantFlow } from './flows/bot/tenant.flow';
 import { LandlordFlow } from './flows/bot/landlord.flow';
-import { AuthMiddleware } from '../../middlewares/auth.middleware';
+import { AuthService } from '../../core/auth/auth.service';
+import { BotAuthMiddleware } from '../../middlewares/bot-auth.middleware';
 
 export class BotController {
     private tenantFlow: TenantFlow;
     private landlordFlow: LandlordFlow;
+    private authService: AuthService; 
 
     constructor(
         private ragService: any,
         private apartmentRepo: any,
         private userRepo: any
     ) {
+        this.authService = new AuthService();
         this.tenantFlow = new TenantFlow(ragService, apartmentRepo, userRepo);
         this.landlordFlow = new LandlordFlow(ragService, apartmentRepo, userRepo);
     }
 
     async handleMessage(chatId: string, text: string, userName: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
+        
+
+        const professionalRoles = ['AGENT', 'LANDLORD', 'SELLER'];
+        if (professionalRoles.includes(user.role)) {
+            return { 
+                text: "היי! ניהול הנכסים שלך מתבצע כעת דרך האפליקציה החדשה שלנו.",
+                action: 'REQUIRE_AUTH' // ה-Service יתרגם זאת לכפתור לינק לאפליקציה
+            };
+        }
         
         // --- שלב א: זיהוי תפקיד ראשוני למשתמשים חדשים ---
         if (user.current_step === 'START' && !user.metadata?.role_selected) {
@@ -36,9 +49,21 @@ export class BotController {
         }
 
         // --- שלב ב: בדיקת אבטחה ומנוי (הכנה למזגן) ---
-        const authError = await AuthMiddleware.checkAccess(user);
-        if (authError) return authError;
-
+        const authError = await BotAuthMiddleware.checkBotAccess(user);
+        if (authError) {
+            const fastToken = jwt.sign(
+                { id: user.id, role: user.role, phone: user.phone }, 
+                process.env.JWT_SECRET!, 
+                { expiresIn: '5m' }
+            );
+            
+            // מעדכנים את הכפתור ב-authError שהתקבל מה-Middleware
+            authError.buttons = [[{ 
+                text: "🔑 כניסה מהירה לאפליקציה", 
+                web_app: { url: `https://your-app.com/login?token=${fastToken}` } 
+            }]];
+            return authError;
+        }
         // --- שלב ג: ניתוב לוגיקה ---
         const isSearch = text.startsWith('/start ') || text.startsWith('דירה ') || /^[a-f0-9-]{6,15}$/i.test(text);
         

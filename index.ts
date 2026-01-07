@@ -1,10 +1,11 @@
 // index.ts
 import express from 'express';
+import rootRouter from './src/delivery/http/router';
 import { RagService } from './src/modules/rag/rag.service';
 import { mockLogin } from './src/modules/users/user.controller';
-import { BotController } from './src/modules/bot/bot.controller';
+import { BotController } from './src/delivery/bot/bot.controller';
 import { UserRepository } from './src/modules/users/user.repository';
-import { TelegramService } from './src/modules/telegram/telegram.service';
+import { TelegramService } from './src/delivery/telegram/telegram.service';
 import { ApartmentRepository } from './src/modules/apartments/apartment.repository';
 
 async function main() {
@@ -23,6 +24,8 @@ async function main() {
 
     // 3. אתחול הבוט
     const telegramBot = new TelegramService(process.env.TELEGRAM_BOT_TOKEN!, botController, app);
+
+    app.use('/api', rootRouter);  // כתובות כמו /api/auth/login
 
     // --- 4. הגדרת ה-Route ל-Postman (חדש) ---
     app.post('/api/users/mock-login', mockLogin);
