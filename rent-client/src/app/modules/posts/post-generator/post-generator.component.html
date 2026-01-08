@@ -1,0 +1,61 @@
+<div class="container">
+  <h1>יצירת פוסט שיווקי ב-AI</h1>
+  
+  <div class="grid">
+    <mat-card class="form-card">
+      <form [formGroup]="postForm" (ngSubmit)="generate()">
+        <mat-card-content>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>בחר נכס</mat-label>
+            <mat-select formControlName="apartmentId">
+              <mat-option *ngFor="let apt of apartments" [value]="apt.id">
+                {{apt.city}} - {{apt.rooms}} חדרים ({{apt.price}} ₪)
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>פלטפורמה</mat-label>
+            <mat-select formControlName="platform">
+              <mat-option *ngFor="let p of platforms" [value]="p.value">{{p.label}}</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>סגנון כתיבה</mat-label>
+            <mat-select formControlName="tone">
+              <mat-option value="professional">מקצועי</mat-option>
+              <mat-option value="casual">קליל</mat-option>
+              <mat-option value="friendly">ידידותי</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" class="full-width" type="submit" [disabled]="postForm.invalid || generating">
+            {{generating ? 'מייצר פוסט...' : 'ייצר פוסט ב-AI ✨'}}
+          </button>
+        </mat-card-actions>
+      </form>
+    </mat-card>
+
+    <mat-card class="result-card" *ngIf="generatedPost || generating">
+      <mat-card-header>
+        <mat-card-title>הפוסט שלך</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div *ngIf="generating" class="generating-spinner">
+          <mat-spinner diameter="40"></mat-spinner>
+          <p>ה-AI מנסח עבורך את הפוסט המושלם...</p>
+        </div>
+        <div *ngIf="!generating && generatedPost" class="post-content">
+          <pre>{{generatedPost.content}}</pre>
+        </div>
+      </mat-card-content>
+      <mat-card-actions *ngIf="!generating && generatedPost">
+        <button mat-button (click)="copyToClipboard()">
+          <mat-icon>content_copy</mat-icon> העתק תוכן
+        </button>
+      </mat-card-actions>
+    </mat-card>
+  </div>
+</div>

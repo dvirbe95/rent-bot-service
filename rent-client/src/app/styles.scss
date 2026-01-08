@@ -1,0 +1,32 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  direction: rtl;
+}
+
+body {
+  background-color: #f5f5f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+// Global RTL support for Material
+.mat-typography {
+  direction: rtl;
+  text-align: right;
+}
+
+.full-width {
+  width: 100%;
+}
+
+// Ensure cards look good on mobile
+@media (max-width: 600px) {
+  mat-card {
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+}
