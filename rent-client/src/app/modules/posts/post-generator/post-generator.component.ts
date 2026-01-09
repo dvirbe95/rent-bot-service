@@ -59,4 +59,17 @@ export class PostGeneratorComponent implements OnInit {
     navigator.clipboard.writeText(this.generatedPost.content);
     this.snackBar.open('התוכן הועתק ללוח', 'סגור', { duration: 2000 });
   }
+
+  shareWhatsApp() {
+    const text = encodeURIComponent(this.generatedPost.content);
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  }
+
+  shareFacebook() {
+    // פייסבוק לא מאפשר שיתוף טקסט ישיר דרך URL בצורה טובה, 
+    // הדרך הטובה ביותר היא לשתף את הלינק לבוט או להשתמש ב-Feed Dialog
+    const shortId = this.generatedPost.apartmentId.split('-')[0];
+    const botLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(botLink)}`, '_blank');
+  }
 }

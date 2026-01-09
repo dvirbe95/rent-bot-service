@@ -53,7 +53,13 @@
       </mat-card-content>
       <mat-card-actions *ngIf="!generating && generatedPost">
         <button mat-button (click)="copyToClipboard()">
-          <mat-icon>content_copy</mat-icon> העתק תוכן
+          <mat-icon>content_copy</mat-icon> העתק
+        </button>
+        <button mat-button color="primary" class="whatsapp-btn" (click)="shareWhatsApp()">
+          <mat-icon>chat</mat-icon> וואטסאפ
+        </button>
+        <button mat-button color="accent" class="facebook-btn" (click)="shareFacebook()">
+          <mat-icon>share</mat-icon> פייסבוק
         </button>
       </mat-card-actions>
     </mat-card>

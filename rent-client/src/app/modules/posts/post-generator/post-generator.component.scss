@@ -34,3 +34,18 @@ pre {
     grid-template-columns: 1fr;
   }
 }
+
+.whatsapp-btn {
+  color: #25D366 !important;
+}
+
+.facebook-btn {
+  color: #1877F2 !important;
+}
+
+mat-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px !important;
+}
