@@ -3,36 +3,23 @@ import { PrismaService } from '../../common/database/prisma.client';
 export class ApartmentRepository {
     private prisma = PrismaService.getClient();
 
-async createApartment(data: any, embedding: number[]): Promise<any> {
-    const { city, price, rooms, description, address, phone_number, calendar_link, images, availability, userId, video_url } = data;
-    
-    const availabilityStr = JSON.stringify(availability || []);
-    // השתמש ב-$queryRaw כדי לקבל את הנתונים חזרה מה-DB
-    const result = await this.prisma.$queryRaw<any[]>`
-        INSERT INTO apartments (
-            id, city, price, rooms, description, address, availability,
-            phone_number, calendar_link, images, video_url, embedding, "userId"
-        )
-        VALUES (
-            gen_random_uuid(), 
-            ${city}, 
-            ${price}::float, 
-            ${rooms}::float, 
-            ${description}, 
-            ${address}, 
-            ${availabilityStr}::jsonb,
-            ${phone_number}, 
-            ${calendar_link}, 
-            ${images || []}, 
-            ${video_url || null},
-            ${embedding}::vector,
-            ${userId || null}
-        )
-        RETURNING id, city, price, rooms; -- אנחנו מבקשים את השדות חזרה
-        `;
+    async createApartment(data: any, embedding: number[]): Promise<any> {
+        const { city, price, rooms, description, address, images, availability, userId, video_url } = data;
         
-        // result הוא מערך, אנחנו רוצים את האיבר הראשון (הדירה שנוצרה)
-        return result[0]; 
+        return await this.prisma.apartment.create({
+            data: {
+                city,
+                price: parseFloat(price),
+                rooms: parseFloat(rooms),
+                description,
+                address,
+                images: images || [],
+                availability: availability || [],
+                video_url: video_url || null,
+                embeddings: embedding, // שים לב: ב-Schema השדה נקרא embeddings
+                userId: userId
+            }
+        });
     }
 
     async findApartmentById(shortId: string) {
@@ -45,14 +32,11 @@ async createApartment(data: any, embedding: number[]): Promise<any> {
         });
     }
 
-    // שליפת דירה לפי ID מלא
     async getById(idOrShortId: string) {
-    // 1. נסיון למצוא לפי ID מלא (למקרה שמדובר ב-UUID תקין)
         let apartment = await this.prisma.apartment.findUnique({
             where: { id: idOrShortId }
         });
 
-        // 2. אם לא נמצא, ננסה לחפש דירה שה-ID שלה מתחיל ב-shortId שקיבלנו
         if (!apartment) {
             apartment = await this.prisma.apartment.findFirst({
                 where: {
@@ -74,15 +58,24 @@ async createApartment(data: any, embedding: number[]): Promise<any> {
     }
 
     async addMedia(id: string, fileId: string, type: string) {
-        const field = type === 'image' ? 'images' : 'videos';
-        return await this.prisma.apartment.update({
-            where: { id },
-            data: {
-                [field]: {
-                    push: fileId // מוסיף למערך הקיים ב-Prisma
+        // ב-Schema החדשה יש לנו רק images ו-video_url (String)
+        if (type === 'image') {
+            return await this.prisma.apartment.update({
+                where: { id },
+                data: {
+                    images: {
+                        push: fileId
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            return await this.prisma.apartment.update({
+                where: { id },
+                data: {
+                    video_url: fileId
+                }
+            });
+        }
     }
 
     async findByUserId(userId: string) {

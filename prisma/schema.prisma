@@ -1,56 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
-}
-
-model Apartment {
-  id           String  @id @default(uuid())
-  city         String
-  price        Float
-  rooms        Float
-  description  String?
-  address      String?
-  phone_number String // מספר המשכיר/מתווך
-  availability Json?
-
-  // שדות חדשים למדיה ויומן
-  images        String[] // מערך של URLS
-  video_url     String? // לינק לסרטון אחד מרכזי
-  calendar_link String? // לינק ל-Cal.com או Google Calendar
-
-  embedding Unsupported("vector(768)")?
-  createdAt DateTime                    @default(now())
-  User      User?                       @relation(fields: [userId], references: [id])
-  userId    String?
-  
-  // קשרים חדשים
-  clientLeads   ClientLead[]
-  posts         Post[]
-
-  @@map("apartments")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id                 String      @id @default(cuid())
-  phone              String      @unique // Telegram Chat ID
-  email              String?     @unique 
-  password           String?     // מוצפן - חובה להרשמה מהאפליקציה
-  name               String?     // שם מלא
-  role               Role        @default(TENANT)
-  current_step       String      @default("START")
-  metadata           Json? 
-  subscriptionStatus Boolean     @default(false)
-  planExpiresAt      DateTime?
-  lastLogin          DateTime?   @default(now())
-  apartments         Apartment[]
-  posts              Post[]
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  id              String   @id @default(uuid())
+  chatId          String?  @unique // Telegram Chat ID
+  name            String?
+  phone           String?  @unique // מזהה ייחודי לבוט ולמשתמשים
+  email           String?  @unique
+  password        String?  // לאפליקציה (מתווכים)
+  role            UserRole @default(USER)
+  
+  apartments      Apartment[]
+  posts           Post[]   
+  
+  metadata        Json?    
+  current_step    String?  @default("START") // לשימוש הבוט
+  subscriptionStatus Boolean @default(false)
+  planExpiresAt   DateTime?
+  
+  lastLogin       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Apartment {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  city            String
+  price           Float
+  rooms           Float
+  description     String?
+  address         String?
+  availability    Json?    
+  images          String[]
+  video_url       String?
+  
+  embeddings      Float[]  
+  
+  clientLeads     ClientLead[]
+  posts           Post[]   
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("apartments")
 }
 
 model ClientLead {
@@ -58,7 +64,7 @@ model ClientLead {
   apartmentId     String
   apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   
-  tenantChatId    String   // Telegram Chat ID של השוכר
+  tenantChatId    String   
   tenantName      String?
   tenantPhone     String?
   tenantEmail     String?
@@ -66,10 +72,11 @@ model ClientLead {
   status          LeadStatus @default(NEW)
   lastMessageAt   DateTime @default(now())
   messages        LeadMessage[]
+  meetings        Meeting[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   @@index([apartmentId])
   @@index([tenantChatId])
   @@map("client_leads")
@@ -80,7 +87,7 @@ model LeadMessage {
   leadId      String
   lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
   
-  senderType  SenderType
+  senderType  SenderType 
   content     String
   timestamp   DateTime @default(now())
   
@@ -88,53 +95,72 @@ model LeadMessage {
   @@map("lead_messages")
 }
 
+model Meeting {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  status      MeetingStatus @default(SCHEDULED)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([leadId])
+  @@map("meetings")
+}
+
 model Post {
-  id            String   @id @default(uuid())
-  apartmentId   String
-  apartment     Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  id              String   @id @default(uuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
   
-  userId        String
-  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content         String   
+  platform        PostPlatform
+  publishedAt     DateTime? 
   
-  content       String   // תוכן הפוסט שנוצר ב-AI
-  platform      PostPlatform @default(TELEGRAM)
-  
-  publishedAt   DateTime?
-  createdAt     DateTime @default(now())
+  createdAt       DateTime @default(now())
   
   @@index([apartmentId])
   @@index([userId])
   @@map("posts")
 }
 
-enum Role {
-  TENANT    // שוכר
-  BUYER     // קונה
-  LANDLORD  // משכיר (פרטי)
-  SELLER    // מוכר (פרטי)
-  AGENT     // מתווך (מקצועי)
-}
-
-enum LeadStatus {
-  NEW
-  CONTACTED
-  VIEWING_SCHEDULED
-  VIEWING_COMPLETED
-  CLOSED
-  REJECTED
-}
-
-enum SenderType {
-  BOT
-  TENANT
+enum UserRole {
+  USER
   AGENT
+  ADMIN
+  TENANT
   LANDLORD
   SELLER
 }
 
+enum LeadStatus {
+  NEW
+  INTERESTED
+  VIEWING_SCHEDULED
+  DEAL_CLOSED
+  LOST
+}
+
+enum SenderType {
+  TENANT
+  BOT
+  AGENT
+}
+
 enum PostPlatform {
   TELEGRAM
-  WHATSAPP
   FACEBOOK
+  WHATSAPP
   INSTAGRAM
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
 }

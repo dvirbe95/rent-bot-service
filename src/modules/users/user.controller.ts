@@ -1,6 +1,6 @@
 // src/modules/users/user.controller.ts (או קובץ דומה)
 import { Request, Response } from 'express';
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -11,7 +11,7 @@ export const mockLogin = async (req: Request, res: Response) => {
         const user = await prisma.user.upsert({
             where: { phone: phone.toString() },
             update: {
-                role: role as Role,
+                role: role as UserRole,
                 subscriptionStatus: subscriptionStatus ?? true,
                 planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
                 lastLogin: lastLogin ? new Date(lastLogin) : new Date(),
@@ -19,7 +19,7 @@ export const mockLogin = async (req: Request, res: Response) => {
             },
             create: {
                 phone: phone.toString(),
-                role: role as Role,
+                role: role as UserRole,
                 subscriptionStatus: subscriptionStatus ?? true,
                 planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
                 lastLogin: lastLogin ? new Date(lastLogin) : new Date(),

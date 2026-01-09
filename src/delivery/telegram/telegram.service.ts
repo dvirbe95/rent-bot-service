@@ -28,6 +28,30 @@ export class TelegramService implements IMessagingService {
         ctx.from.first_name
       );
 
+      // --- הוספת לוגיקת לידים ---
+      const user = await this.userRepository.getOrCreateUser(ctx.chat.id.toString());
+      const activeApartmentId = (user.metadata as any)?.active_apartment_id;
+      
+      if (activeApartmentId) {
+          const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
+          const lead = await leadRepo.getOrCreateLead(activeApartmentId, ctx.chat.id.toString(), ctx.from.first_name);
+          
+          // שמירת ההודעה בהיסטוריית הליד
+          await leadRepo.addMessage(lead.id, {
+              senderType: "TENANT",
+              content: ctx.message.text
+          });
+
+          // אם ה-AI החזיר תשובה, נשמור גם אותה
+          if (response.text) {
+              await leadRepo.addMessage(lead.id, {
+                  senderType: "BOT",
+                  content: response.text
+              });
+          }
+      }
+      // -------------------------
+
       if (response.action === 'REQUIRE_AUTH') {
           return ctx.reply(response.text, {
               reply_markup: {
@@ -38,7 +62,6 @@ export class TelegramService implements IMessagingService {
 
       await this.sendMessage(ctx.chat.id.toString(), response);
 
-      const user = await this.userRepository.getOrCreateUser(ctx.chat.id.toString()); // המתווך שלחץ על הכפתור
       const lastApartmentId = (user.metadata as any)?.active_apartment_id ;
       const apartment = (await this.apartmentRepository.getById(
         lastApartmentId
@@ -236,10 +259,24 @@ export class TelegramService implements IMessagingService {
                 start: confirmedDate.toISOString(),
                 end: endDate.toISOString(),
               },
-              // tenantUser.name || "שוכר",
               "שוכר פוטנציאלי",
               emails
             );
+
+            // עדכון סטטוס הליד ושמירת פגישה
+            const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
+            const lead = await leadRepo.getOrCreateLead(apartment.id, tenantChatId);
+            await leadRepo.updateStatus(lead.id, "VIEWING_SCHEDULED");
+            
+            // שמירת הפגישה ב-DB
+            await this.prisma.meeting.create({
+                data: {
+                    leadId: lead.id,
+                    startTime: confirmedDate,
+                    endTime: endDate,
+                    location: apartment.city
+                }
+            });
 
             // 3. שליחת התראת אימייל נוספת (אופציונלי - הקלנדר כבר שולח)
             if (user.email) {

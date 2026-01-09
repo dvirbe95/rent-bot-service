@@ -41,6 +41,12 @@ const routes: Routes = [
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['AGENT', 'LANDLORD', 'SELLER'] },
     loadChildren: () => import('./modules/posts/posts.module').then(m => m.PostsModule)
+  },
+  { 
+    path: 'meetings', 
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['AGENT', 'LANDLORD', 'SELLER'] },
+    loadChildren: () => import('./modules/meetings/meetings.module').then(m => m.MeetingsModule)
   }
 ];
 

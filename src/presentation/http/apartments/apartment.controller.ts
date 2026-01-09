@@ -14,7 +14,15 @@ export class ApartmentController {
         try {
             const userId = (req as any).user?.id;
             if (!userId) {
-                res.status(401).json({ error: 'Unauthorized' });
+                res.status(401).json({ error: 'Unauthorized: No user ID found in token' });
+                return;
+            }
+
+            // Verify user exists to prevent foreign key violation
+            const userRepo = new (await import('../../../modules/users/user.repository')).UserRepository();
+            const user = await userRepo.findById(userId);
+            if (!user) {
+                res.status(401).json({ error: 'Unauthorized: User no longer exists in database' });
                 return;
             }
 
@@ -32,18 +40,11 @@ export class ApartmentController {
             // יצירת הנכס
             const apartment = await this.apartmentRepo.createApartment({
                 ...data,
-                phone_number: (req as any).user?.phone || '',
                 userId,
                 images: data.images || [],
                 video_url: data.videoUrl,
-                calendar_link: data.calendarLink,
                 availability: data.availability || [],
             }, embedding);
-
-            // עדכון userId לאחר יצירה (אם צריך)
-            if (apartment && !apartment.userId) {
-                await this.apartmentRepo.updateApartment(apartment.id, { userId });
-            }
 
             res.status(201).json({ success: true, apartment });
         } catch (error: any) {

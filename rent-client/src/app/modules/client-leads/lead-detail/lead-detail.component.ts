@@ -41,4 +41,10 @@ export class LeadDetailComponent implements OnInit {
       this.messageForm.reset();
     });
   }
+
+  openWaze(address: string) {
+    if (!address) return;
+    const url = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
+    window.open(url, '_blank');
+  }
 }

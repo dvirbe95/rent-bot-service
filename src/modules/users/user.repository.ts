@@ -1,19 +1,16 @@
-import { PrismaClient, Role } from '@prisma/client';
+import { PrismaClient, UserRole } from '@prisma/client';
+import { PrismaService } from '../../common/database/prisma.client';
 
-const prisma = new PrismaClient();
-
-// הערה: עדיף להשתמש ב-Role של Prisma ישירות כדי למנוע כפילות
 export class UserRepository {
-    
-    // --- מתודות קיימות (מעודכנות קלות) ---
+    private prisma = PrismaService.getClient();
 
     async getOrCreateUser(phone: string) {
-        return await prisma.user.upsert({
+        return await this.prisma.user.upsert({
             where: { phone },
             update: {},
             create: {
                 phone,
-                role: Role.TENANT, // שימוש ב-Enum של Prisma
+                role: UserRole.TENANT,
                 current_step: 'START',
                 subscriptionStatus: false
             },
@@ -21,14 +18,14 @@ export class UserRepository {
     }
 
     async updateStep(phone: string, step: string, metadata: any = {}) {
-        return await prisma.user.update({
+        return await this.prisma.user.update({
             where: { phone },
             data: { current_step: step, metadata },
         });
     }
 
     async checkSubscription(phone: string) {
-        const user = await prisma.user.findUnique({
+        const user = await this.prisma.user.findUnique({
             where: { phone },
             select: {
                 subscriptionStatus: true,
@@ -48,8 +45,8 @@ export class UserRepository {
         };
     }
 
-    async updateUserRole(phone: string, role: Role) {
-        return await prisma.user.update({
+    async updateUserRole(phone: string, role: UserRole) {
+        return await this.prisma.user.update({
             where: { phone },
             data: { 
                 role: role,
@@ -58,10 +55,8 @@ export class UserRepository {
         });
     }
 
-    // --- מתודות חדשות עבור Web App Auth ---
-
     async findByEmail(email: string) {
-        return await prisma.user.findUnique({
+        return await this.prisma.user.findUnique({
             where: { email },
         });
     }
@@ -70,40 +65,39 @@ export class UserRepository {
         email: string; 
         password?: string; 
         name?: string; 
-        role: Role; 
+        role: UserRole; 
         phone?: string 
     }) {
-        return await prisma.user.create({
+        return await this.prisma.user.create({
             data: {
                 email: userData.email,
                 password: userData.password,
                 name: userData.name,
                 role: userData.role,
-                // אם המשתמש נרשם מה-Web ואין לו טלפון, ניצור מזהה פנימי
                 phone: userData.phone || `web_${userData.email}_${Date.now()}`,
                 current_step: 'COMPLETED_WEB_REG',
-                subscriptionStatus: userData.role === Role.AGENT ? false : true // מתווך מתחיל ללא מנוי
+                subscriptionStatus: userData.role === UserRole.AGENT ? false : true 
             }
         });
     }
 
     async findById(id: string) {
-        return await prisma.user.findUnique({
+        return await this.prisma.user.findUnique({
             where: { id }
         });
     }
 
     async updateLastLogin(id: string) {
-        return await prisma.user.update({
+        return await this.prisma.user.update({
             where: { id },
             data: { lastLogin: new Date() }
         });
     }
 
     async getAllUsers() {
-        return await prisma.user.findMany({
+        return await this.prisma.user.findMany({
             orderBy: { createdAt: 'desc' },
-            select: { // לא נרצה להחזיר סיסמאות בדף ניהול
+            select: {
                 id: true,
                 name: true,
                 email: true,
@@ -116,15 +110,14 @@ export class UserRepository {
         });
     }
 
-    // מחיקת משתמש
     async deleteUser(id: string) {
-        return await prisma.user.delete({
+        return await this.prisma.user.delete({
             where: { id }
         });
     }
 
     async updateUser(id: string, data: any) {
-        return await prisma.user.update({
+        return await this.prisma.user.update({
             where: { id },
             data
         });

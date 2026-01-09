@@ -1,5 +1,5 @@
 // src/middlewares/bot-auth.middleware.ts
-import { Role } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { BotResponse } from "../common/interfaces/messaging.interface";
 
 export class BotAuthMiddleware {

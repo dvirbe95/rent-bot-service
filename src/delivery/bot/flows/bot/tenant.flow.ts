@@ -1,6 +1,6 @@
 // src/modules/bot/flows/bot/tenant.flow.ts
 import { BaseFlow } from './base.flow';
-import { Role } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 export class TenantFlow extends BaseFlow {
     async handleApartmentLookup(chatId: string, text: string) {

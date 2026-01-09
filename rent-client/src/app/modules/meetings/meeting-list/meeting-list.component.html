@@ -1,0 +1,92 @@
+<div class="container">
+  <div class="header">
+    <h1>יומן פגישות</h1>
+  </div>
+
+  <mat-card>
+    <table mat-table [dataSource]="meetings" class="full-width" *ngIf="!loading">
+      
+      <ng-container matColumnDef="time">
+        <th mat-header-cell *matHeaderCellDef> מתי </th>
+        <td mat-cell *matCellDef="let element"> 
+          <div>{{element.startTime | date:'dd/MM/yyyy'}}</div>
+          <small>{{element.startTime | date:'HH:mm'}} - {{element.endTime | date:'HH:mm'}}</small>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="tenant">
+        <th mat-header-cell *matHeaderCellDef> לקוח </th>
+        <td mat-cell *matCellDef="let element"> 
+          {{element.lead?.tenantName || 'לקוח אנונימי'}}
+          <div *ngIf="element.lead?.tenantPhone">
+            <a [href]="'tel:' + element.lead.tenantPhone" class="phone-link">
+              <mat-icon>phone</mat-icon> {{element.lead.tenantPhone}}
+            </a>
+          </div>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="apartment">
+        <th mat-header-cell *matHeaderCellDef> נכס </th>
+        <td mat-cell *matCellDef="let element"> 
+          {{element.lead?.apartment?.city}}, {{element.lead?.apartment?.address}}
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="location">
+        <th mat-header-cell *matHeaderCellDef> מיקום/Waze </th>
+        <td mat-cell *matCellDef="let element"> 
+          <button mat-icon-button color="accent" (click)="openWaze(element.lead?.apartment?.address)" *ngIf="element.lead?.apartment?.address" matTooltip="ניווט ב-Waze">
+            <mat-icon>directions_car</mat-icon>
+          </button>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="status">
+        <th mat-header-cell *matHeaderCellDef> סטטוס </th>
+        <td mat-cell *matCellDef="let element">
+          <mat-chip-listbox>
+            <mat-chip [color]="element.status === 'SCHEDULED' ? 'primary' : element.status === 'COMPLETED' ? 'accent' : 'warn'" selected>
+              {{getStatusLabel(element.status)}}
+            </mat-chip>
+          </mat-chip-listbox>
+        </td>
+      </ng-container>
+
+      <ng-container matColumnDef="actions">
+        <th mat-header-cell *matHeaderCellDef> פעולות </th>
+        <td mat-cell *matCellDef="let element">
+          <button mat-icon-button [matMenuTriggerFor]="menu">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #menu="matMenu">
+            <button mat-menu-item (click)="updateStatus(element.id, 'COMPLETED')" *ngIf="element.status === 'SCHEDULED'">
+              <mat-icon>check_circle</mat-icon>
+              <span>סמן כבוצעה</span>
+            </button>
+            <button mat-menu-item (click)="updateStatus(element.id, 'CANCELLED')" *ngIf="element.status === 'SCHEDULED'">
+              <mat-icon>cancel</mat-icon>
+              <span>בטל פגישה</span>
+            </button>
+            <button mat-menu-item (click)="deleteMeeting(element.id)">
+              <mat-icon>delete</mat-icon>
+              <span>מחק לצמיתות</span>
+            </button>
+          </mat-menu>
+        </td>
+      </ng-container>
+
+      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div class="empty-state" *ngIf="!loading && meetings.length === 0">
+      <mat-icon>event_busy</mat-icon>
+      <p>אין פגישות מתוזמנות ביומן</p>
+    </div>
+
+    <div class="loading-spinner" *ngIf="loading">
+      <mat-spinner diameter="40"></mat-spinner>
+    </div>
+  </mat-card>
+</div>

@@ -30,12 +30,16 @@ export class LeadListComponent implements OnInit {
   getStatusLabel(status: string): string {
     const labels: any = {
       'NEW': 'חדש',
-      'CONTACTED': 'נוצר קשר',
-      'VIEWING_SCHEDULED': 'נקבע סיור',
-      'VIEWING_COMPLETED': 'בוצע סיור',
-      'CLOSED': 'סגור',
-      'REJECTED': 'לא רלוונטי'
+      'INTERESTED': 'מתעניין',
+      'VIEWING_SCHEDULED': 'נקבעה פגישה',
+      'DEAL_CLOSED': 'סגור (עסקה)',
+      'LOST': 'לא רלוונטי'
     };
     return labels[status] || status;
+  }
+
+  openWaze(address: string) {
+    const url = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
+    window.open(url, '_blank');
   }
 }

@@ -5,8 +5,19 @@
       <mat-card-subtitle>מתעניין בנכס ב{{lead.apartment?.city}}</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
-      <p><strong>סטטוס:</strong> {{lead.status}}</p>
-      <p><strong>טלפון:</strong> {{lead.tenantPhone || 'לא צוין'}}</p>
+      <div class="lead-details-grid">
+        <p><strong>סטטוס:</strong> {{lead.status}}</p>
+        <p><strong>טלפון:</strong> {{lead.tenantPhone || 'לא צוין'}}</p>
+      </div>
+      
+      <div class="lead-actions">
+        <a mat-raised-button color="primary" [href]="'tel:' + lead.tenantPhone" *ngIf="lead.tenantPhone">
+          <mat-icon>phone</mat-icon> התקשר ללקוח
+        </a>
+        <button mat-raised-button color="accent" (click)="openWaze(lead.apartment?.address)" *ngIf="lead.apartment?.address">
+          <mat-icon>directions_car</mat-icon> ניווט לנכס ב-Waze
+        </button>
+      </div>
     </mat-card-content>
   </mat-card>
 

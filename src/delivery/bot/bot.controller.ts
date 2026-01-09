@@ -1,6 +1,6 @@
 // src/modules/bot/bot.controller.ts
 import jwt from 'jsonwebtoken';
-import { Role } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 import { TenantFlow } from './flows/bot/tenant.flow';
 import { LandlordFlow } from './flows/bot/landlord.flow';
 import { AuthService } from '../../core/auth/auth.service';
@@ -72,7 +72,7 @@ export class BotController {
         }
 
         // הפרדה גנרית: AGENT/LANDLORD/SELLER הולכים ל-Publisher Flow
-        const isPublisher = [Role.AGENT, Role.LANDLORD, Role.SELLER].includes(user.role);
+        const isPublisher = [UserRole.AGENT, UserRole.LANDLORD, UserRole.SELLER].includes(user.role);
         
         if (isPublisher) {
             return await this.landlordFlow.handle(chatId, text, user, userName);
@@ -85,7 +85,7 @@ export class BotController {
     // שאר המתודות (handleMedia, formatAvailability) נשארות כפי שהיו בקוד המקורי שלך
     async handleMedia(chatId: string, fileId: string, type: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
-        const isPublisher = [Role.AGENT, Role.LANDLORD, Role.SELLER].includes(user.role);
+        const isPublisher = [UserRole.AGENT, UserRole.LANDLORD, UserRole.SELLER].includes(user.role);
 
         if (isPublisher) {
             return await this.landlordFlow.handleMedia(chatId, fileId, type, user);
