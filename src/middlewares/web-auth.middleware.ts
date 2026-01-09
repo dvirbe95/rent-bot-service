@@ -11,7 +11,7 @@ export const webAuth = (req: Request, res: Response, next: NextFunction): void =
 
     const token = authHeader.split(' ')[1];
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'super-secret');
         (req as any).user = decoded;
         next(); // ממשיך הלאה ללא החזרת ערך
     } catch (e) {

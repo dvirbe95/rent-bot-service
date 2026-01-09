@@ -1,5 +1,6 @@
 // index.ts
 import express from 'express';
+import cors from 'cors';
 import rootRouter from './src/delivery/http/router';
 import { RagService } from './src/modules/rag/rag.service';
 import { mockLogin } from './src/modules/users/user.controller';
@@ -12,6 +13,15 @@ async function main() {
     console.log('🚀 Starting System...');
 
     const app = express();
+    
+    // CORS configuration - מאפשר גישה מה-Frontend
+    app.use(cors({
+        origin: ['http://localhost:4200', 'http://localhost:3000'], // Angular dev server
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }));
+    
     app.use(express.json()); // חובה כדי לקרוא JSON מ-Postman
 
     // 1. אתחול תשתיות

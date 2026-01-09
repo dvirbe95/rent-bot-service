@@ -27,6 +27,10 @@ model Apartment {
   createdAt DateTime                    @default(now())
   User      User?                       @relation(fields: [userId], references: [id])
   userId    String?
+  
+  // קשרים חדשים
+  clientLeads   ClientLead[]
+  posts         Post[]
 
   @@map("apartments")
 }
@@ -44,8 +48,63 @@ model User {
   planExpiresAt      DateTime?
   lastLogin          DateTime?   @default(now())
   apartments         Apartment[]
+  posts              Post[]
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
+}
+
+model ClientLead {
+  id              String   @id @default(uuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  tenantChatId    String   // Telegram Chat ID של השוכר
+  tenantName      String?
+  tenantPhone     String?
+  tenantEmail     String?
+  
+  status          LeadStatus @default(NEW)
+  lastMessageAt   DateTime @default(now())
+  messages        LeadMessage[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([apartmentId])
+  @@index([tenantChatId])
+  @@map("client_leads")
+}
+
+model LeadMessage {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  
+  senderType  SenderType
+  content     String
+  timestamp   DateTime @default(now())
+  
+  @@index([leadId])
+  @@map("lead_messages")
+}
+
+model Post {
+  id            String   @id @default(uuid())
+  apartmentId   String
+  apartment     Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  
+  userId        String
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content       String   // תוכן הפוסט שנוצר ב-AI
+  platform      PostPlatform @default(TELEGRAM)
+  
+  publishedAt   DateTime?
+  createdAt     DateTime @default(now())
+  
+  @@index([apartmentId])
+  @@index([userId])
+  @@map("posts")
 }
 
 enum Role {
@@ -54,4 +113,28 @@ enum Role {
   LANDLORD  // משכיר (פרטי)
   SELLER    // מוכר (פרטי)
   AGENT     // מתווך (מקצועי)
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  VIEWING_SCHEDULED
+  VIEWING_COMPLETED
+  CLOSED
+  REJECTED
+}
+
+enum SenderType {
+  BOT
+  TENANT
+  AGENT
+  LANDLORD
+  SELLER
+}
+
+enum PostPlatform {
+  TELEGRAM
+  WHATSAPP
+  FACEBOOK
+  INSTAGRAM
 }

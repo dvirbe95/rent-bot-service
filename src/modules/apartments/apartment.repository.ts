@@ -4,14 +4,14 @@ export class ApartmentRepository {
     private prisma = PrismaService.getClient();
 
 async createApartment(data: any, embedding: number[]): Promise<any> {
-    const { city, price, rooms, description, address, phone_number, calendar_link, images, availability } = data;
+    const { city, price, rooms, description, address, phone_number, calendar_link, images, availability, userId, video_url } = data;
     
     const availabilityStr = JSON.stringify(availability || []);
     // השתמש ב-$queryRaw כדי לקבל את הנתונים חזרה מה-DB
     const result = await this.prisma.$queryRaw<any[]>`
         INSERT INTO apartments (
             id, city, price, rooms, description, address, availability,
-            phone_number, calendar_link, images, embedding
+            phone_number, calendar_link, images, video_url, embedding, "userId"
         )
         VALUES (
             gen_random_uuid(), 
@@ -24,7 +24,9 @@ async createApartment(data: any, embedding: number[]): Promise<any> {
             ${phone_number}, 
             ${calendar_link}, 
             ${images || []}, 
-            ${embedding}::vector
+            ${video_url || null},
+            ${embedding}::vector,
+            ${userId || null}
         )
         RETURNING id, city, price, rooms; -- אנחנו מבקשים את השדות חזרה
         `;
@@ -80,6 +82,19 @@ async createApartment(data: any, embedding: number[]): Promise<any> {
                     push: fileId // מוסיף למערך הקיים ב-Prisma
                 }
             }
+        });
+    }
+
+    async findByUserId(userId: string) {
+        return await this.prisma.apartment.findMany({
+            where: { userId },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async delete(id: string) {
+        return await this.prisma.apartment.delete({
+            where: { id },
         });
     }
 }
