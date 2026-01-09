@@ -1,0 +1,51 @@
+.container {
+  padding: 24px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-top: 24px;
+}
+.full-width {
+  width: 100%;
+}
+.post-content {
+  background: #f8f9fa;
+  padding: 16px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  font-family: inherit;
+  border: 1px solid #dee2e6;
+}
+.generating-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px;
+  color: #666;
+}
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.whatsapp-btn {
+  color: #25D366 !important;
+}
+
+.facebook-btn {
+  color: #1877F2 !important;
+}
+
+mat-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px !important;
+}

@@ -1,0 +1,31 @@
+.container {
+  padding: 24px;
+}
+
+.header {
+  margin-bottom: 24px;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  justify-content: center;
+  padding: 48px;
+}
+
+mat-chip-listbox {
+  display: inline-block;
+}
+
+@media (max-width: 600px) {
+  .container {
+    padding: 12px;
+  }
+  
+  .mat-column-lastMessageAt {
+    display: none;
+  }
+}

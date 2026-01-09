@@ -1,0 +1,40 @@
+<div class="container" *ngIf="!loading">
+  <mat-card class="lead-info">
+    <mat-card-header>
+      <mat-card-title>{{lead.tenantName || 'לקוח אנונימי'}}</mat-card-title>
+      <mat-card-subtitle>מתעניין בנכס ב{{lead.apartment?.city}}</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <p><strong>סטטוס:</strong> {{lead.status}}</p>
+      <p><strong>טלפון:</strong> {{lead.tenantPhone || 'לא צוין'}}</p>
+    </mat-card-content>
+  </mat-card>
+
+  <mat-card class="chat-container">
+    <mat-card-header>
+      <mat-card-title>היסטוריית שיחה עם הבוט</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div class="messages">
+        <div *ngFor="let msg of messages" [ngClass]="['message', msg.senderType.toLowerCase()]">
+          <div class="msg-bubble">
+            <span class="sender">{{msg.senderType}}:</span>
+            <p>{{msg.content}}</p>
+            <small>{{msg.timestamp | date:'HH:mm'}}</small>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+    <mat-divider></mat-divider>
+    <mat-card-actions>
+      <form [formGroup]="messageForm" (ngSubmit)="sendMessage()" class="msg-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <input matInput formControlName="content" placeholder="שלח הודעה ללקוח דרך הבוט...">
+        </mat-form-field>
+        <button mat-mini-fab color="primary" type="submit" [disabled]="messageForm.invalid">
+          <mat-icon>send</mat-icon>
+        </button>
+      </form>
+    </mat-card-actions>
+  </mat-card>
+</div>

@@ -34,13 +34,15 @@ model Apartment {
 model User {
   id                 String      @id @default(cuid())
   phone              String      @unique // Telegram Chat ID
-  email              String?     @unique // לצורך חיבור גוגל
+  email              String?     @unique 
+  password           String?     // מוצפן - חובה להרשמה מהאפליקציה
+  name               String?     // שם מלא
   role               Role        @default(TENANT)
   current_step       String      @default("START")
   metadata           Json? 
   subscriptionStatus Boolean     @default(false)
   planExpiresAt      DateTime?
-  lastLogin          DateTime?   @default(now()) // בדיקת 30 יום
+  lastLogin          DateTime?   @default(now())
   apartments         Apartment[]
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt

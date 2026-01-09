@@ -1,0 +1,60 @@
+<div class="register-wrapper">
+  <mat-card class="register-card">
+    <mat-card-header>
+      <mat-card-title>הרשמה ל-RentBot</mat-card-title>
+      <mat-card-subtitle>הצטרף למערכת ניהול הנכסים החכמה בישראל</mat-card-subtitle>
+    </mat-card-header>
+
+    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+      <mat-card-content>
+        <div class="form-grid">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>שם מלא</mat-label>
+            <input matInput formControlName="name" placeholder="ישראל ישראלי">
+            <mat-error *ngIf="registerForm.get('name')?.hasError('required')">חובה להזין שם</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>אימייל</mat-label>
+            <input matInput formControlName="email" type="email" placeholder="example@mail.com">
+            <mat-error *ngIf="registerForm.get('email')?.hasError('email')">אימייל לא תקין</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>טלפון (נייד)</mat-label>
+            <input matInput formControlName="phone" placeholder="0501234567">
+            <mat-error *ngIf="registerForm.get('phone')?.hasError('required')">חובה להזין טלפון</mat-error>
+            <mat-error *ngIf="registerForm.get('phone')?.hasError('pattern')">מספר טלפון לא תקין</mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>סוג משתמש</mat-label>
+            <mat-select formControlName="role">
+              <mat-option *ngFor="let role of roles" [value]="role.value">
+                {{ role.label }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>סיסמה</mat-label>
+            <input matInput formControlName="password" type="password">
+            <mat-error *ngIf="registerForm.get('password')?.hasError('required')">חובה להזין סיסמה</mat-error>
+            <mat-error *ngIf="registerForm.get('password')?.hasError('minlength')">מינימום 6 תווים</mat-error>
+          </mat-form-field>
+        </div>
+
+        <p class="error-text" *ngIf="errorMessage">{{ errorMessage }}</p>
+      </mat-card-content>
+
+      <mat-card-actions>
+        <button mat-raised-button color="primary" class="full-width" type="submit" [disabled]="registerForm.invalid || loading">
+          {{ loading ? 'נרשם...' : 'צור חשבון' }}
+        </button>
+        <div class="login-link">
+          כבר יש לך חשבון? <a routerLink="/login">התחבר כאן</a>
+        </div>
+      </mat-card-actions>
+    </form>
+  </mat-card>
+</div>

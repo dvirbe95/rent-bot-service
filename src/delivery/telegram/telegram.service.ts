@@ -1,11 +1,11 @@
 import { Telegraf } from "telegraf";
-import { UserRepository } from "../users/user.repository";
-import { ApartmentRepository } from "../apartments/apartment.repository";
+import { UserRepository } from "../../modules/users/user.repository";
+import { ApartmentRepository } from "../../modules/apartments/apartment.repository";
 import {
   IMessagingService,
   BotResponse,
 } from "../../common/interfaces/messaging.interface";
-import { CalendarService } from "../calendar/calendar.service";
+import { CalendarService } from "../../modules/calendar/calendar.service";
 
 export class TelegramService implements IMessagingService {
   private bot: Telegraf;
@@ -27,13 +27,23 @@ export class TelegramService implements IMessagingService {
         ctx.message.text,
         ctx.from.first_name
       );
+
+      if (response.action === 'REQUIRE_AUTH') {
+          return ctx.reply(response.text, {
+              reply_markup: {
+                  inline_keyboard: [[{ text: "🔑 כניסה לאפליקציה", url: "https://your-app.com" }]]
+              }
+          });
+      }
+
       await this.sendMessage(ctx.chat.id.toString(), response);
 
-        const user = await this.userRepository.getOrCreateUser(ctx.chat.id.toString()); // המתווך שלחץ על הכפתור
-        const lastApartmentId = (user.metadata as any)?.active_apartment_id ;
-        const apartment = (await this.apartmentRepository.getById(
-          lastApartmentId
-        )) as any;
+      const user = await this.userRepository.getOrCreateUser(ctx.chat.id.toString()); // המתווך שלחץ על הכפתור
+      const lastApartmentId = (user.metadata as any)?.active_apartment_id ;
+      const apartment = (await this.apartmentRepository.getById(
+        lastApartmentId
+      )) as any;
+
       return await this.sendApartmentMenu(ctx, apartment);
     });
 
