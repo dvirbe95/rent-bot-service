@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { MeetingService, Meeting } from '../../../core/services/meeting.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Observable } from 'rxjs';
+import { map, shareReplay } from 'rxjs/operators';
 
 @Component({
   selector: 'app-meeting-list',
@@ -12,9 +15,16 @@ export class MeetingListComponent implements OnInit {
   displayedColumns: string[] = ['time', 'tenant', 'apartment', 'location', 'status', 'actions'];
   loading = true;
 
+  isHandset$: Observable<boolean> = this.breakpointObserver.observe(Breakpoints.Handset)
+    .pipe(
+      map(result => result.matches),
+      shareReplay()
+    );
+
   constructor(
     private meetingService: MeetingService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private breakpointObserver: BreakpointObserver
   ) { }
 
   ngOnInit() {

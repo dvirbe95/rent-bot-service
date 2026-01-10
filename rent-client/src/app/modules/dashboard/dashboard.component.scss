@@ -1,96 +1,129 @@
 .dashboard-container {
-  padding: 24px;
-  max-width: 1200px;
+  padding: 16px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
 .dashboard-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 32px;
+  gap: 16px;
 
-  h1 {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: 500;
+  .header-text {
+    h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      font-weight: bold;
+      color: #1e293b;
+    }
+    p {
+      margin: 4px 0 0;
+      color: #64748b;
+    }
+  }
+
+  @media (max-width: 600px) {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+    
+    button { width: 100%; }
   }
 }
 
 .stats-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 40px;
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stat-card {
-  text-align: center;
-  transition: transform 0.2s;
+  border-radius: 16px;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
 
-  &:hover {
-    transform: translateY(-4px);
-  }
+  &:hover { transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1); }
+  &.highlight { border: 1px solid #ffedd5; background: #fffaf5; }
 
-  &.highlight {
-    border: 2px solid #ff9800;
-  }
-
-  mat-card-content {
+  .stat-header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
     padding: 24px;
+
+    .icon-box {
+      width: 56px;
+      height: 56px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      
+      mat-icon { font-size: 28px; width: 28px; height: 28px; }
+      
+      &.blue { background: #eff6ff; color: #2563eb; }
+      &.green { background: #f0fdf4; color: #16a34a; }
+      &.orange { background: #fff7ed; color: #ea580c; }
+    }
+
+    .stat-info {
+      .stat-value { font-size: 2rem; font-weight: bold; color: #0f172a; line-height: 1; }
+      .stat-label { font-size: 0.95rem; color: #64748b; margin-top: 4px; }
+    }
+  }
+
+  mat-card-actions {
+    padding: 12px 16px;
+    justify-content: flex-end;
+    
+    button { font-weight: 500; }
   }
 }
 
-.stat-icon {
-  font-size: 3rem;
-  margin-bottom: 16px;
-}
+.quick-actions {
+  h3 { font-size: 1.2rem; font-weight: bold; margin-bottom: 16px; color: #1e293b; }
+  
+  .actions-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
 
-.stat-value {
-  font-size: 2.5rem;
-  font-weight: bold;
-  margin-bottom: 8px;
-  color: #2196f3;
-}
-
-.stat-label {
-  font-size: 1rem;
-  color: #666;
-  margin-bottom: 16px;
+    button {
+      padding: 8px 20px;
+      border-radius: 8px;
+      
+      &.calendar-btn { background: #f1f5f9; color: #475569; }
+      @media (max-width: 600px) { width: 100%; }
+    }
+  }
 }
 
 .tenant-welcome-card {
   max-width: 600px;
   margin: 40px auto;
   text-align: center;
-  padding: 40px 20px;
-  border-radius: 16px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
-
-  .welcome-icon {
-    font-size: 4rem;
-    margin-bottom: 20px;
-  }
-
-  h2 {
-    font-size: 2rem;
-    color: #1a237e;
-    margin-bottom: 16px;
-  }
-
-  p {
-    font-size: 1.1rem;
-    color: #666;
-    margin-bottom: 8px;
-  }
-
+  padding: 32px 16px;
+  border-radius: 20px;
+  
+  .welcome-icon { font-size: 4rem; margin-bottom: 20px; }
+  h2 { font-size: 1.8rem; color: #1e293b; margin-bottom: 16px; }
+  p { color: #64748b; font-size: 1.1rem; line-height: 1.6; margin-bottom: 8px; }
+  
   .action-box {
     margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
     
-    a {
-      padding: 12px 32px;
-      font-size: 1.1rem;
-    }
+    .bot-btn { width: 100%; max-width: 300px; padding: 12px; font-size: 1.1rem; }
   }
 }
 
@@ -99,7 +132,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 80px 20px;
+  color: #64748b;
   
   mat-spinner { margin-bottom: 16px; }
 }

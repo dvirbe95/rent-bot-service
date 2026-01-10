@@ -4,14 +4,26 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-    apiVersion: '2024-11-20.acacia' as any,
-});
-
 export class PaymentController {
+    private stripe: Stripe | null = null;
+
+    private getStripe() {
+        if (!this.stripe) {
+            const apiKey = process.env.STRIPE_SECRET_KEY;
+            if (!apiKey) {
+                throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
+            }
+            this.stripe = new Stripe(apiKey, {
+                apiVersion: '2024-11-20.acacia' as any,
+            });
+        }
+        return this.stripe;
+    }
+
     async createPaymentIntent(req: Request, res: Response) {
         try {
             const { amount, currency = 'ils' } = req.body;
+            const stripe = this.getStripe();
 
             const paymentIntent = await stripe.paymentIntents.create({
                 amount: amount * 100, // Stripe works with cents/agorot

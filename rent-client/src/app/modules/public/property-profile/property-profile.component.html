@@ -1,64 +1,104 @@
 <div class="profile-container" *ngIf="!loading && apartment">
   <div class="media-section" *ngIf="apartment.images?.length">
-    <img [src]="apartment.images[0]" class="hero-image">
+    <div class="main-image-wrapper">
+      <img [src]="apartment.images[0]" class="hero-image">
+      <div class="price-overlay">{{apartment.price | number}} ₪</div>
+    </div>
     <div class="image-gallery" *ngIf="apartment.images.length > 1">
       <img *ngFor="let img of apartment.images.slice(1)" [src]="img" class="gallery-thumb">
     </div>
   </div>
 
-  <mat-card class="info-card">
-    <mat-card-header>
-      <mat-card-title>{{apartment.city}} - {{apartment.address}}</mat-card-title>
-      <mat-card-subtitle>{{apartment.rooms}} חדרים | קומה {{apartment.floor}} | {{apartment.sqm}} מ"ר</mat-card-subtitle>
-      <div class="price-tag">{{apartment.price | number}} ₪</div>
-    </mat-card-header>
+  <div class="content-section">
+    <div class="property-header">
+      <h1>{{apartment.city}}</h1>
+      <p class="address">{{apartment.address}}</p>
+      
+      <div class="stats-row">
+        <div class="stat">
+          <span class="value">{{apartment.rooms}}</span>
+          <span class="label">חדרים</span>
+        </div>
+        <div class="stat">
+          <span class="value">{{apartment.floor}}</span>
+          <span class="label">קומה</span>
+        </div>
+        <div class="stat">
+          <span class="value">{{apartment.sqm}}</span>
+          <span class="label">מ"ר</span>
+        </div>
+      </div>
+    </div>
 
-    <mat-card-content>
-      <p class="description">{{apartment.description}}</p>
-      
-      <mat-divider></mat-divider>
-      
+    <mat-card class="description-card">
+      <mat-card-content>
+        <h3>תיאור הנכס</h3>
+        <p>{{apartment.description}}</p>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="features-section">
+      <h3>מה יש בדירה?</h3>
       <div class="features-grid">
-        <div class="feature" *ngIf="apartment.balcony">
+        <div class="feature" [class.inactive]="!apartment.balcony">
           <mat-icon>balcony</mat-icon> <span>מרפסת</span>
         </div>
-        <div class="feature" *ngIf="apartment.parking">
+        <div class="feature" [class.inactive]="!apartment.parking">
           <mat-icon>local_parking</mat-icon> <span>חניה</span>
         </div>
-        <div class="feature" *ngIf="apartment.elevator">
+        <div class="feature" [class.inactive]="!apartment.elevator">
           <mat-icon>elevator</mat-icon> <span>מעלית</span>
         </div>
-        <div class="feature" *ngIf="apartment.mamad">
+        <div class="feature" [class.inactive]="!apartment.mamad">
           <mat-icon>security</mat-icon> <span>ממ"ד</span>
         </div>
+        <div class="feature" [class.inactive]="!apartment.furnished">
+          <mat-icon>chair</mat-icon> <span>מרוהטת</span>
+        </div>
+        <div class="feature" [class.inactive]="!apartment.petsAllowed">
+          <mat-icon>pets</mat-icon> <span>חיות מחמד</span>
+        </div>
       </div>
+    </div>
 
-      <mat-divider></mat-divider>
+    <mat-card class="financial-card">
+      <mat-card-content>
+        <div class="financial-row">
+          <div class="item">
+            <span class="label">כניסה</span>
+            <span class="value">{{apartment.entryDate ? (apartment.entryDate | date:'dd/MM/yy') : 'מיידי'}}</span>
+          </div>
+          <div class="item">
+            <span class="label">ארנונה</span>
+            <span class="value">{{apartment.arnona || 0}} ₪</span>
+          </div>
+          <div class="item">
+            <span class="label">ועד בית</span>
+            <span class="value">{{apartment.vaadBayit || 0}} ₪</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
 
-      <div class="extra-info">
-        <p><strong>תאריך כניסה:</strong> {{apartment.entryDate ? (apartment.entryDate | date:'dd/MM/yyyy') : 'מיידי'}}</p>
-        <p><strong>ארנונה:</strong> {{apartment.arnona}} ₪</p>
-        <p><strong>ועד בית:</strong> {{apartment.vaadBayit}} ₪</p>
-      </div>
-    </mat-card-content>
-
-    <mat-card-actions>
-      <button mat-raised-button color="primary" (click)="openWaze()">
-        <mat-icon>directions_car</mat-icon> ניווט לנכס
-      </button>
-      <a mat-raised-button color="accent" [href]="'https://t.me/dvir_rent_bot?start=' + apartment.id.split('-')[0]">
-        <mat-icon>chat</mat-icon> תיאום סיור בבוט
-      </a>
-    </mat-card-actions>
-  </mat-card>
+  <!-- Sticky Actions for Mobile -->
+  <div class="sticky-actions">
+    <button mat-raised-button color="primary" (click)="openWaze()" class="action-btn">
+      <mat-icon>directions_car</mat-icon> ניווט ב-Waze
+    </button>
+    <a mat-raised-button color="accent" [href]="'https://t.me/dvir_rent_bot?start=' + apartment.id.split('-')[0]" class="action-btn">
+      <mat-icon>chat</mat-icon> תיאום סיור בבוט
+    </a>
+  </div>
 </div>
 
 <div class="loading-state" *ngIf="loading">
   <mat-spinner diameter="50"></mat-spinner>
+  <p>טוען פרטי נכס...</p>
 </div>
 
 <div class="error-state" *ngIf="error">
-  <mat-icon>error_outline</mat-icon>
-  <h2>הנכס לא נמצא או שהלינק לא תקין</h2>
-  <button mat-button color="primary" routerLink="/">חזרה לדף הבית</button>
+  <mat-icon color="warn">error_outline</mat-icon>
+  <h2>הנכס לא נמצא או שהקישור לא תקין</h2>
+  <button mat-raised-button color="primary" routerLink="/">חזרה לדף הבית</button>
 </div>

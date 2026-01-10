@@ -1,10 +1,10 @@
 <mat-sidenav-container class="sidenav-container" *ngIf="authService.isAuthenticated()">
   <mat-sidenav #drawer class="sidenav" fixedInViewport
-      [attr.role]="'navigation'"
-      [mode]="'side'"
-      [opened]="true">
+      [attr.role]="(isHandset$ | async) ? 'dialog' : 'navigation'"
+      [mode]="(isHandset$ | async) ? 'over' : 'side'"
+      [opened]="(isHandset$ | async) === false">
     <mat-toolbar color="primary">RentBot</mat-toolbar>
-    <mat-nav-list>
+    <mat-nav-list (click)="closeSidenavOnMobile()">
       <!-- קישורים למפרסמים (סוכנים, משכירים, מוכרים) -->
       <ng-container *ngIf="authService.hasRole('AGENT') || authService.hasRole('LANDLORD') || authService.hasRole('SELLER')">
         <a mat-list-item routerLink="/dashboard" routerLinkActive="active">
@@ -54,6 +54,7 @@
   <mat-sidenav-content>
     <mat-toolbar color="primary">
       <button
+        *ngIf="isHandset$ | async"
         type="button"
         aria-label="Toggle sidenav"
         mat-icon-button

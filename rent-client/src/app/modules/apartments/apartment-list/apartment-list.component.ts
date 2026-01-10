@@ -1,7 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { ApartmentService, ApartmentFilters } from '../../../core/services/apartment.service';
 import { FormControl } from '@angular/forms';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, shareReplay } from 'rxjs/operators';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-apartment-list',
@@ -13,11 +15,20 @@ export class ApartmentListComponent implements OnInit {
   displayedColumns: string[] = ['city', 'address', 'price', 'rooms', 'actions'];
   loading = true;
 
+  isHandset$: Observable<boolean> = this.breakpointObserver.observe(Breakpoints.Handset)
+    .pipe(
+      map(result => result.matches),
+      shareReplay()
+    );
+
   // Filters
   searchControl = new FormControl('');
   filters: ApartmentFilters = {};
 
-  constructor(private apartmentService: ApartmentService) {}
+  constructor(
+    private apartmentService: ApartmentService,
+    private breakpointObserver: BreakpointObserver
+  ) {}
 
   ngOnInit() {
     this.loadApartments();

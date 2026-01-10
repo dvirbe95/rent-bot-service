@@ -1,51 +1,68 @@
 <div class="container" *ngIf="!loading">
-  <mat-card class="lead-info">
+  <!-- Back Button for Mobile -->
+  <button mat-button routerLink="/client-leads" class="back-btn">
+    <mat-icon>chevron_right</mat-icon> חזרה לרשימה
+  </button>
+
+  <mat-card class="lead-info-card">
     <mat-card-header>
       <mat-card-title>{{lead.tenantName || 'לקוח אנונימי'}}</mat-card-title>
-      <mat-card-subtitle>מתעניין בנכס ב{{lead.apartment?.city}}</mat-card-subtitle>
+      <mat-card-subtitle>{{lead.apartment?.city}}, {{lead.apartment?.address}}</mat-card-subtitle>
     </mat-card-header>
     <mat-card-content>
-      <div class="lead-details-grid">
-        <p><strong>סטטוס:</strong> {{lead.status}}</p>
-        <p><strong>טלפון:</strong> {{lead.tenantPhone || 'לא צוין'}}</p>
+      <div class="info-chips">
+        <span class="status-chip" [attr.data-status]="lead.status">{{getStatusLabel(lead.status)}}</span>
+        <span class="phone-chip" *ngIf="lead.tenantPhone">
+          <mat-icon>phone</mat-icon> {{lead.tenantPhone}}
+        </span>
       </div>
       
-      <div class="lead-actions">
-        <a mat-raised-button color="primary" [href]="'tel:' + lead.tenantPhone" *ngIf="lead.tenantPhone">
-          <mat-icon>phone</mat-icon> התקשר ללקוח
+      <div class="lead-actions-grid">
+        <a mat-flat-button color="primary" [href]="'tel:' + lead.tenantPhone" *ngIf="lead.tenantPhone">
+          <mat-icon>phone</mat-icon> התקשר
         </a>
-        <button mat-raised-button color="accent" (click)="openWaze(lead.apartment?.address)" *ngIf="lead.apartment?.address">
-          <mat-icon>directions_car</mat-icon> ניווט לנכס ב-Waze
+        <button mat-flat-button color="accent" (click)="openWaze(lead.apartment?.address)" *ngIf="lead.apartment?.address">
+          <mat-icon>directions_car</mat-icon> Waze
         </button>
       </div>
     </mat-card-content>
   </mat-card>
 
-  <mat-card class="chat-container">
-    <mat-card-header>
-      <mat-card-title>היסטוריית שיחה עם הבוט</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div class="messages">
-        <div *ngFor="let msg of messages" [ngClass]="['message', msg.senderType.toLowerCase()]">
-          <div class="msg-bubble">
-            <span class="sender">{{msg.senderType}}:</span>
-            <p>{{msg.content}}</p>
-            <small>{{msg.timestamp | date:'HH:mm'}}</small>
-          </div>
+  <div class="chat-wrapper">
+    <div class="chat-header">
+      <mat-icon>forum</mat-icon>
+      <span>היסטוריית שיחה</span>
+    </div>
+    
+    <div class="messages-list">
+      <div *ngFor="let msg of messages" 
+           [ngClass]="['message-row', msg.senderType === 'TENANT' ? 'incoming' : 'outgoing']">
+        <div class="bubble">
+          <div class="sender-name">{{msg.senderType === 'TENANT' ? (lead.tenantName || 'לקוח') : 'הבוט שלי'}}</div>
+          <p class="content">{{msg.content}}</p>
+          <div class="timestamp">{{msg.timestamp | date:'HH:mm'}}</div>
         </div>
       </div>
-    </mat-card-content>
-    <mat-divider></mat-divider>
-    <mat-card-actions>
-      <form [formGroup]="messageForm" (ngSubmit)="sendMessage()" class="msg-form">
-        <mat-form-field appearance="outline" class="full-width">
-          <input matInput formControlName="content" placeholder="שלח הודעה ללקוח דרך הבוט...">
+      
+      <div class="empty-chat" *ngIf="messages.length === 0">
+        <mat-icon>chat_bubble_outline</mat-icon>
+        <p>טרם נשלחו הודעות בשיחה זו</p>
+      </div>
+    </div>
+
+    <div class="chat-footer">
+      <form [formGroup]="messageForm" (ngSubmit)="sendMessage()">
+        <mat-form-field appearance="outline">
+          <input matInput formControlName="content" placeholder="הקלד הודעה ללקוח...">
+          <button mat-icon-button matSuffix color="primary" type="submit" [disabled]="messageForm.invalid">
+            <mat-icon>send</mat-icon>
+          </button>
         </mat-form-field>
-        <button mat-mini-fab color="primary" type="submit" [disabled]="messageForm.invalid">
-          <mat-icon>send</mat-icon>
-        </button>
       </form>
-    </mat-card-actions>
-  </mat-card>
+    </div>
+  </div>
+</div>
+
+<div class="loading-overlay" *ngIf="loading">
+  <mat-spinner diameter="50"></mat-spinner>
 </div>

@@ -1,8 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { ClientLeadService, LeadFilters } from '../../../core/services/client-lead.service';
 import { FormControl } from '@angular/forms';
-import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, map, shareReplay } from 'rxjs/operators';
 import { ApartmentService } from '../../../core/services/apartment.service';
+import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'app-lead-list',
@@ -15,6 +17,12 @@ export class LeadListComponent implements OnInit {
   displayedColumns: string[] = ['tenantName', 'contact', 'apartment', 'status', 'lastMessageAt', 'actions'];
   loading = true;
 
+  isHandset$: Observable<boolean> = this.breakpointObserver.observe(Breakpoints.Handset)
+    .pipe(
+      map(result => result.matches),
+      shareReplay()
+    );
+
   // Filters
   searchControl = new FormControl('');
   statusControl = new FormControl('');
@@ -23,7 +31,8 @@ export class LeadListComponent implements OnInit {
 
   constructor(
     private leadService: ClientLeadService,
-    private apartmentService: ApartmentService
+    private apartmentService: ApartmentService,
+    private breakpointObserver: BreakpointObserver
   ) {}
 
   ngOnInit() {

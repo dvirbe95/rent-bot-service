@@ -2,65 +2,121 @@
   <!-- מפרסמים -->
   <ng-container *ngIf="userRole !== 'TENANT'">
     <div class="dashboard-header">
-      <h1>דשבורד RentBot</h1>
-      <button mat-raised-button color="warn" (click)="logout()">התנתק</button>
+      <div class="header-text">
+        <h1>שלום, {{authService.currentUserValue?.name}}</h1>
+        <p>סקירה מהירה של הפעילות שלך</p>
+      </div>
+      <button mat-stroked-button color="warn" (click)="logout()">
+        <mat-icon>logout</mat-icon> התנתק
+      </button>
     </div>
 
     <div class="stats-grid" *ngIf="!loading">
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon">🏠</div>
-          <div class="stat-value">{{ apartmentsCount }}</div>
-          <div class="stat-label">נכסים פעילים</div>
-          <button mat-button color="primary" (click)="navigateTo('/apartments')">צפה בנכסים</button>
+          <div class="stat-header">
+            <div class="icon-box blue">
+              <mat-icon>home</mat-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ apartmentsCount }}</div>
+              <div class="stat-label">נכסים פעילים</div>
+            </div>
+          </div>
+          <mat-divider></mat-divider>
+          <mat-card-actions>
+            <button mat-button color="primary" (click)="navigateTo('/apartments')">
+              ניהול נכסים <mat-icon>chevron_left</mat-icon>
+            </button>
+          </mat-card-actions>
         </mat-card-content>
       </mat-card>
 
       <mat-card class="stat-card">
         <mat-card-content>
-          <div class="stat-icon">👥</div>
-          <div class="stat-value">{{ leadsCount }}</div>
-          <div class="stat-label">לידים בסך הכל</div>
-          <button mat-button color="primary" (click)="navigateTo('/client-leads')">צפה בלידים</button>
+          <div class="stat-header">
+            <div class="icon-box green">
+              <mat-icon>people</mat-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ leadsCount }}</div>
+              <div class="stat-label">לידים בסך הכל</div>
+            </div>
+          </div>
+          <mat-divider></mat-divider>
+          <mat-card-actions>
+            <button mat-button color="primary" (click)="navigateTo('/client-leads')">
+              צפה בלידים <mat-icon>chevron_left</mat-icon>
+            </button>
+          </mat-card-actions>
         </mat-card-content>
       </mat-card>
 
       <mat-card class="stat-card highlight">
         <mat-card-content>
-          <div class="stat-icon">✨</div>
-          <div class="stat-value">{{ newLeadsCount }}</div>
-          <div class="stat-label">לידים חדשים</div>
-          <button mat-button color="accent" (click)="navigateTo('/client-leads')">נהל לידים</button>
+          <div class="stat-header">
+            <div class="icon-box orange">
+              <mat-icon>auto_awesome</mat-icon>
+            </div>
+            <div class="stat-info">
+              <div class="stat-value">{{ newLeadsCount }}</div>
+              <div class="stat-label">לידים חדשים</div>
+            </div>
+          </div>
+          <mat-divider></mat-divider>
+          <mat-card-actions>
+            <button mat-button color="accent" (click)="navigateTo('/client-leads')">
+              טפל בלידים <mat-icon>chevron_left</mat-icon>
+            </button>
+          </mat-card-actions>
         </mat-card-content>
       </mat-card>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions" *ngIf="!loading">
+      <h3>פעולות מהירות</h3>
+      <div class="actions-row">
+        <button mat-flat-button color="primary" routerLink="/apartments/create">
+          <mat-icon>add</mat-icon> הוספת נכס חדש
+        </button>
+        <button mat-flat-button color="accent" routerLink="/posts">
+          <mat-icon>auto_awesome</mat-icon> יצירת פוסט AI
+        </button>
+        <button mat-flat-button class="calendar-btn" routerLink="/meetings">
+          <mat-icon>calendar_month</mat-icon> יומן פגישות
+        </button>
+      </div>
     </div>
   </ng-container>
 
   <!-- שוכרים/קונים -->
   <ng-container *ngIf="userRole === 'TENANT'">
     <div class="dashboard-header">
-      <h1>שלום, {{authService.currentUserValue?.name}}</h1>
-      <button mat-raised-button color="warn" (click)="logout()">התנתק</button>
+      <h1>ברוך הבא, {{authService.currentUserValue?.name}}</h1>
     </div>
 
     <mat-card class="tenant-welcome-card">
       <mat-card-content>
-        <div class="welcome-icon">👋</div>
-        <h2>ברוך הבא ל-RentBot!</h2>
-        <p>כאן תוכל לצפות בנכסים שמעניינים אותך דרך הלינקים ששלח לך הבוט בטלגרם.</p>
-        <p>כרגע אין לך הרשאות ניהול נכסים.</p>
+        <div class="welcome-icon">🏡</div>
+        <h2>חיפוש דירה חכם מתחיל כאן</h2>
+        <p>כרגע הממשק האישי שלך פעיל בבוט הטלגרם שלנו.</p>
+        <p>תוכל לצפות בנכסים, לשאול שאלות ולתאם פגישות ישירות מול הבוט.</p>
         
         <div class="action-box">
-          <a mat-raised-button color="primary" href="https://t.me/dvir_rent_bot" target="_blank">
-            <mat-icon>smart_toy</mat-icon> חזור לבוט בטלגרם
+          <a mat-raised-button color="primary" href="https://t.me/dvir_rent_bot" target="_blank" class="bot-btn">
+            <mat-icon>smart_toy</mat-icon> עבור לבוט בטלגרם
           </a>
+          <button mat-button color="warn" (click)="logout()" class="mt-3">
+            <mat-icon>logout</mat-icon> התנתק מהאתר
+          </button>
         </div>
       </mat-card-content>
     </mat-card>
   </ng-container>
 
   <div class="loading-spinner" *ngIf="loading">
-    <mat-spinner diameter="40"></mat-spinner>
+    <mat-spinner diameter="50"></mat-spinner>
     <p>טוען נתונים...</p>
   </div>
 </div>

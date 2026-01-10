@@ -1,12 +1,13 @@
 .landing-container {
   min-height: 100vh;
   background: #fdfdfd;
+  direction: rtl;
 }
 
 .hero {
-  background: linear-gradient(135deg, #1a237e 0%, #0d47a1 100%);
+  background: linear-gradient(135deg, #3f51b5 0%, #1a237e 100%);
   color: white;
-  padding: 100px 20px;
+  padding: 80px 20px 140px;
   text-align: center;
 
   .hero-content {
@@ -17,6 +18,9 @@
       font-size: 3.5rem;
       font-weight: 800;
       margin-bottom: 24px;
+      line-height: 1.2;
+      
+      @media (max-width: 600px) { font-size: 2.2rem; }
     }
 
     p {
@@ -24,88 +28,94 @@
       margin-bottom: 40px;
       line-height: 1.6;
       opacity: 0.9;
+      @media (max-width: 600px) { font-size: 1.1rem; }
     }
   }
 
   .action-buttons {
     display: flex;
-    gap: 20px;
+    gap: 16px;
     justify-content: center;
+    
+    @media (max-width: 600px) { flex-direction: column; padding: 0 20px; }
 
     button {
       padding: 12px 32px;
       font-size: 1.1rem;
+      height: 54px;
+      border-radius: 30px;
     }
   }
 }
 
 .features {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 40px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
   max-width: 1200px;
-  margin: -60px auto 80px;
+  margin: -80px auto 80px;
   padding: 0 20px;
 
   .feature-card {
     background: white;
-    padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+    padding: 32px;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
     text-align: center;
     transition: transform 0.3s ease;
 
-    &:hover {
-      transform: translateY(-5px);
-    }
+    &:hover { transform: translateY(-5px); }
 
     mat-icon {
-      font-size: 48px;
-      width: 48px;
-      height: 48px;
-      color: #1a237e;
-      margin-bottom: 24px;
+      font-size: 40px;
+      width: 40px;
+      height: 40px;
+      color: #3f51b5;
+      margin-bottom: 20px;
+      background: #f0f2ff;
+      padding: 12px;
+      border-radius: 50%;
     }
 
-    h3 {
-      font-size: 1.5rem;
-      margin-bottom: 16px;
-      color: #333;
-    }
-
-    p {
-      color: #666;
-      line-height: 1.5;
-    }
+    h3 { font-size: 1.3rem; font-weight: bold; margin-bottom: 12px; color: #1e293b; }
+    p { color: #64748b; line-height: 1.6; margin: 0; }
   }
 }
 
 .pricing {
   padding: 80px 20px;
-  background: #f5f5f5;
+  background: #f8fafc;
   text-align: center;
 
   .pricing-card {
-    max-width: 400px;
+    max-width: 450px;
     margin: 0 auto;
-    border-radius: 20px;
-    overflow: hidden;
+    border-radius: 24px;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.05);
+    border: 2px solid #3f51b5;
     
-    .price {
-      font-size: 3rem;
-      font-weight: bold;
-      color: #1a237e;
-      margin: 24px 0;
+    mat-card-header {
+      background: #3f51b5;
+      color: white;
+      padding: 32px 24px;
+      display: block;
       
-      small {
-        font-size: 1.2rem;
-        color: #666;
-      }
+      mat-card-title { font-size: 1.8rem; font-weight: 800; margin-bottom: 8px; }
+      mat-card-subtitle { color: rgba(255,255,255,0.8); font-size: 1rem; }
+    }
+
+    .price {
+      font-size: 3.5rem;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 32px 0;
+      
+      small { font-size: 1.2rem; color: #64748b; font-weight: normal; }
     }
 
     ul {
       list-style: none;
-      padding: 0;
+      padding: 0 32px;
       text-align: right;
       margin: 32px 0;
 
@@ -114,27 +124,24 @@
         align-items: center;
         gap: 12px;
         margin-bottom: 16px;
-        color: #444;
+        color: #475569;
+        font-size: 1.05rem;
 
-        mat-icon {
-          color: #2e7d32;
-        }
+        mat-icon { color: #22c55e; }
       }
     }
 
     mat-card-actions {
-      padding: 24px !important;
+      padding: 0 32px 32px !important;
       
       button {
         width: 100%;
-        padding: 12px;
-        font-size: 1.1rem;
+        padding: 16px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        border-radius: 30px;
+        height: 60px;
       }
     }
   }
-}
-
-@media (max-width: 600px) {
-  .hero h1 { font-size: 2.2rem; }
-  .action-buttons { flex-direction: column; }
 }
