@@ -40,30 +40,13 @@ export class CalendarService {
     apartment: any,
     slot: { start: string; end: string },
     tenantName: string,
-    participantEmails: string[] // הוספת מיילים של המתווך והשוכר
+    participantEmails: string[]
   ) {
-    if (!this.calendar) throw new Error("Calendar API not initialized");
-
-    const event = {
-      summary: `🏠 סיור בדירה: ${apartment.city}`,
-      location: `${apartment.city}, ישראל`,
-      description: `סיור בדירה שמזהה שלה הוא .\nתיאום בין המפרסם לשוכר ${tenantName}.`,
-      start: { dateTime: slot.start, timeZone: "Israel" },
-      end: { dateTime: slot.end, timeZone: "Israel" },
-      reminders: {
-        useDefault: false,
-        overrides: [
-          { method: "email", minutes: 24 * 60 },
-          { method: "popup", minutes: 30 },
-        ],
-      },
-    };
-
-    return await this.calendar.events.insert({
-      calendarId: "primary",
-      requestBody: event,
-      sendUpdates: "all", // שולח הזמנה במייל למשתתפים באופן אוטומטי
-    });
+    // בגלל מגבלות Service Account של גוגל (Domain-Wide Delegation), 
+    // אנחנו מסתמכים על שליחת זימון ICS במייל (Nodemailer) שמאפשר למשתמש להוסיף ליומן שלו.
+    // הפונקציה הזו כרגע רק רושמת לוג, בעתיד ניתן להוסיף כאן רישום ליומן מרכזי של המערכת.
+    console.log(`📅 Meeting request logged: ${tenantName} for apartment ${apartment.city} at ${slot.start}`);
+    return { id: 'logged-only' };
   }
 
   private transporter = nodemailer.createTransport({
@@ -78,11 +61,20 @@ export class CalendarService {
   });
 
   async sendEmailNotification(emails: string[], details: any) {
+    if (!emails || emails.length === 0 || !emails.some(e => !!e)) {
+        console.warn('⚠️ No valid emails provided for notification');
+        return;
+    }
+    
     const startTime = new Date(details.start);
     const endTime = new Date(startTime.getTime() + 30 * 60000); // פגישה של 30 דקות
     
-    // חילוץ ה-ID הקצר לטובת הלינק
-    const shortId = details.apartmentId ? details.apartment.phone_number.split('-')[0] : '';
+    const apartment = details.apartment;
+    const fullAddress = apartment?.address ? `${apartment.address}, ${apartment.city}` : apartment?.city;
+    const wazeLink = `https://waze.com/ul?q=${encodeURIComponent(fullAddress || '')}`;
+    
+    // חילוץ המזהה לטובת הלינק
+    const shortId = apartment?.id?.substring(0, 8) || details.apartmentId?.substring(0, 8) || '';
     const botLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
 
     // יצירת תוכן ה-ICS
@@ -95,8 +87,8 @@ export class CalendarService {
       `DTSTART:${startTime.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
       `DTEND:${endTime.toISOString().replace(/[-:]/g, "").split(".")[0]}Z`,
       `SUMMARY:🏠 סיור בדירה: ${details.city}`,
-      `DESCRIPTION:תיאום סיור עם השוכר ${details.tenantName}. לפרטים נוספים ושאלות בבוט: ${botLink}`,
-      `LOCATION:${details.city}`,
+      `DESCRIPTION:תיאום סיור עם השוכר ${details.tenantName}.\nניווט ב-Waze: ${wazeLink}\nלפרטים נוספים בבוט: ${botLink}`,
+      `LOCATION:${fullAddress}`,
       "END:VEVENT",
       "END:VCALENDAR",
     ].join("\r\n");
@@ -106,24 +98,31 @@ export class CalendarService {
       to: emails,
       subject: `תיאום סיור חדש ב-${details.city} 🏠`,
       html: `
-          <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6;">
-              <h1 style="color: #2c3e50;">נקבע סיור חדש! 🎉</h1>
-              <p>היי, נקבע תיאום סיור עבור הנכס שלך ב${details.city}.</p>
+          <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+              <h1 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">נקבע סיור חדש! 🎉</h1>
+              <p style="font-size: 1.1em;">היי, נקבע תיאום סיור עבור הנכס ב${details.city}.</p>
               
-              <div style="background-color: #f8f9fa; padding: 15px; border-radius: 8px; border-right: 5px solid #3498db;">
-                  <p><strong>👤 שוכר פוטנציאלי:</strong> ${details.tenantName}</p>
-                  <p><strong>📅 מועד:</strong> ${startTime.toLocaleString("he-IL", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                  <p><strong>📍 מיקום:</strong> ${details.city}</p>
+              <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; border-right: 5px solid #3498db; margin: 20px 0;">
+                  <p style="margin: 5px 0;"><strong>👤 שוכר פוטנציאלי:</strong> ${details.tenantName}</p>
+                  <p style="margin: 5px 0;"><strong>📅 מועד:</strong> ${startTime.toLocaleString("he-IL", { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                  <p style="margin: 5px 0;"><strong>📍 מיקום:</strong> ${fullAddress}</p>
               </div>
 
-              <p style="margin-top: 20px;">יש לך שאלות נוספות? רוצה לנהל את הדירה בבוט?</p>
-              <a href="${botLink}" 
-                 style="display: inline-block; padding: 10px 20px; background-color: #0088cc; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
-                 💬 פתיחת הדירה בטלגרם
-              </a>
+              <div style="display: flex; gap: 10px; margin-top: 25px;">
+                  <a href="${wazeLink}" 
+                     style="display: inline-block; padding: 12px 25px; background-color: #33ccff; color: white; text-decoration: none; border-radius: 5px; font-weight: bold; margin-left: 10px;">
+                     🚗 ניווט ב-Waze
+                  </a>
+                  
+                  <a href="${botLink}" 
+                     style="display: inline-block; padding: 12px 25px; background-color: #0088cc; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                     💬 פתיחה בטלגרם
+                  </a>
+              </div>
 
-              <p style="font-size: 0.9em; color: #7f8c8d; margin-top: 30px;">
-                  * זימון ליומן צורף למייל זה.
+              <p style="margin-top: 30px; font-size: 0.9em; color: #7f8c8d; border-top: 1px solid #eee; padding-top: 15px;">
+                  * זימון ליומן (Add to Calendar) צורף למייל זה כקובץ invite.ics.<br>
+                  * מומלץ לוודא הגעה לפני המועד.
               </p>
           </div>
       `,

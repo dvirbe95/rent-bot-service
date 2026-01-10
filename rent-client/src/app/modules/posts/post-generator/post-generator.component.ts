@@ -66,10 +66,22 @@ export class PostGeneratorComponent implements OnInit {
   }
 
   shareFacebook() {
-    // פייסבוק לא מאפשר שיתוף טקסט ישיר דרך URL בצורה טובה, 
-    // הדרך הטובה ביותר היא לשתף את הלינק לבוט או להשתמש ב-Feed Dialog
+    // פייסבוק חוסמת אפשרות להזין טקסט מראש (pre-fill) מסיבות פרטיות.
+    // הפתרון הכי טוב: מעתיקים את הטקסט ללוח באופן אוטומטי ושולחים את המשתמש להדביק אותו.
+    
+    this.copyToClipboard();
+    
     const shortId = this.generatedPost.apartmentId.split('-')[0];
-    const botLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
-    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(botLink)}`, '_blank');
+    const baseUrl = window.location.origin;
+    const profileLink = `${baseUrl}/p/${this.generatedPost.apartmentId}`;
+    
+    this.snackBar.open('הפוסט הועתק! פשוט הדבק אותו (Paste) בפייסבוק', 'הבנתי', { 
+      duration: 5000,
+      horizontalPosition: 'center',
+      verticalPosition: 'top'
+    });
+
+    // פותחים את השיתוף עם הלינק לדף הנכס (כדי שתהיה תצוגה מקדימה יפה)
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(profileLink)}`, '_blank');
   }
 }

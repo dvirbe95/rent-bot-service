@@ -60,6 +60,8 @@ export class ApartmentRepository {
     }
 
     async getById(idOrShortId: string) {
+        if (!idOrShortId) return null;
+        
         let apartment = await this.prisma.apartment.findUnique({
             where: { id: idOrShortId }
         });

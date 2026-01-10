@@ -23,8 +23,42 @@ export class BotController {
 
     async handleMessage(chatId: string, text: string, userName: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
-        
 
+        // --- שלב 0: טיפול בלינק עמוק (Deep Linking) ---
+        if (text.startsWith('/start link_')) {
+            const userId = text.replace('/start link_', '').trim();
+            if (userId) {
+                try {
+                    const webUser = await this.userRepo.findById(userId);
+                    if (webUser) {
+                        // אם יש כבר יוזר אחר עם ה-chatId הזה (היוזר הזמני של הבוט), נמחק אותו כדי שנוכל לקשר
+                        if (user.id !== webUser.id) {
+                            await this.userRepo.deleteUser(user.id);
+                        }
+                        await this.userRepo.updateUser(userId, { chatId });
+                        return {
+                            text: `🎉 החשבון שלך קושר בהצלחה! ברוך הבא ${webUser.name || userName}.\nעכשיו תוכל לקבל עדכונים ולידים ישירות לכאן.`,
+                        };
+                    }
+                } catch (err) {
+                    console.error('Error linking user:', err);
+                }
+            }
+        }
+
+        // --- שלב 0.1: טיפול בפקודת קישור ידנית ---
+        if (text.startsWith('/link ')) {
+            const email = text.replace('/link ', '').trim().toLowerCase();
+            const webUser = await this.userRepo.findByEmail(email);
+            if (webUser) {
+                if (user.id !== webUser.id) {
+                    await this.userRepo.deleteUser(user.id);
+                }
+                await this.userRepo.updateUser(webUser.id, { chatId });
+                return { text: `✅ החשבון של ${email} קושר לטלגרם שלך בהצלחה!` };
+            }
+            return { text: "❌ לא מצאתי משתמש עם המייל הזה במערכת." };
+        }
         const professionalRoles = ['AGENT', 'LANDLORD', 'SELLER'];
         if (professionalRoles.includes(user.role)) {
             return { 
@@ -110,7 +144,7 @@ export class BotController {
 
                 buttons.push([{ 
                     text: `${dayName} בשעה ${timeStr}`, 
-                    callback_data: `book_slot_${fullDateStr}` 
+                    callback_data: `book_slot_${current.toISOString()}` 
                 }]);
 
                 // הוספת 15 דקות

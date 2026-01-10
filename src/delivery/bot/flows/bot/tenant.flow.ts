@@ -48,11 +48,12 @@ export class TenantFlow extends BaseFlow {
                 return { text: "המפרסם עדיין לא הגדיר שעות לתיאום. תרצה להשאיר לו הודעה?" };
             }
 
-            const buttons = (apartment.availability as any[]).map((slot: any, idx: number) => {
+            const buttons = (apartment.availability as any[]).map((slot: any) => {
                 const date = new Date(slot.start).toLocaleDateString('he-IL');
                 const start = new Date(slot.start).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
                 const end = new Date(slot.end).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
-                return [{ text: `${date} | ${start}-${end}`, callback_data: `book_slot_${idx}` }];
+                // משתמשים ב-ISO string כדי שה-TelegramService יוכל לפענח את התאריך
+                return [{ text: `${date} | ${start}-${end}`, callback_data: `book_slot_${slot.start}` }];
             });
 
             return { text: "בחר מועד לתיאום סיור:", buttons };

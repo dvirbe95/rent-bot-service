@@ -176,6 +176,7 @@ enum PostPlatform {
 
 enum MeetingStatus {
   SCHEDULED
+  CONFIRMED
   COMPLETED
   CANCELLED
 }

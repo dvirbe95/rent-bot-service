@@ -31,10 +31,13 @@ export class UserRepository {
         });
     }
 
-    async updateStep(phone: string, step: string, metadata: any = {}) {
+    async updateStep(chatId: string, step: string, metadata: any = {}) {
         return await this.prisma.user.update({
-            where: { phone },
-            data: { current_step: step, metadata },
+            where: { chatId },
+            data: { 
+                current_step: step, 
+                metadata: metadata 
+            },
         });
     }
 
