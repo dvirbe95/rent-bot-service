@@ -8,6 +8,8 @@ import { Router } from '@angular/router';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
+  title = 'rent-client';
+  
   constructor(public authService: AuthService, private router: Router) {}
 
   logout() {

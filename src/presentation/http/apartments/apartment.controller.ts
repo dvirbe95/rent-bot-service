@@ -41,9 +41,7 @@ export class ApartmentController {
             const apartment = await this.apartmentRepo.createApartment({
                 ...data,
                 userId,
-                images: data.images || [],
                 video_url: data.videoUrl,
-                availability: data.availability || [],
             }, embedding);
 
             res.status(201).json({ success: true, apartment });
@@ -66,8 +64,14 @@ export class ApartmentController {
                 return;
             }
 
-            // שליפת נכסים של המשתמש מה-DB (צריך להוסיף ל-ApartmentRepository)
-            const apartments = await this.apartmentRepo.findByUserId(userId);
+            const filters = {
+                search: req.query.search as string,
+                city: req.query.city as string,
+                minPrice: req.query.minPrice as string,
+                maxPrice: req.query.maxPrice as string
+            };
+
+            const apartments = await this.apartmentRepo.findByUserId(userId, filters);
             
             res.json({ success: true, apartments });
         } catch (error: any) {
@@ -76,7 +80,28 @@ export class ApartmentController {
         }
     };
 
-    // קבלת נכס ספציפי
+    // קבלת נכס ספציפי (ציבורי - ללא צורך בטוקן)
+    getPublicById = async (req: Request, res: Response): Promise<void> => {
+        try {
+            const { id } = req.params;
+            const apartment = await this.apartmentRepo.getById(id);
+            
+            if (!apartment) {
+                throw new NotFoundError('Apartment');
+            }
+
+            // החזרת פרטים חלקיים/ציבוריים במידת הצורך
+            res.json({ success: true, apartment });
+        } catch (error: any) {
+            if (error instanceof NotFoundError) {
+                res.status(404).json({ error: error.message });
+            } else {
+                res.status(500).json({ error: 'Internal Server Error' });
+            }
+        }
+    };
+
+    // קבלת נכס ספציפי (פרטי - עם בדיקת בעלות)
     getById = async (req: Request, res: Response): Promise<void> => {
         try {
             const { id } = req.params;

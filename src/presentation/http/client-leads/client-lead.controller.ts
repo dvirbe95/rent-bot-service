@@ -17,7 +17,13 @@ export class ClientLeadController {
                 return;
             }
 
-            const leads = await this.leadRepo.findByUserId(userId);
+            const filters = {
+                search: req.query.search as string,
+                status: req.query.status as any,
+                apartmentId: req.query.apartmentId as string
+            };
+
+            const leads = await this.leadRepo.findByUserId(userId, filters);
             res.json({ success: true, leads });
         } catch (error: any) {
             console.error('Error listing client leads:', error);

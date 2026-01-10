@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface ClientLead {
@@ -9,7 +9,7 @@ export interface ClientLead {
   tenantName?: string;
   tenantPhone?: string;
   tenantEmail?: string;
-  status: 'NEW' | 'CONTACTED' | 'VIEWING_SCHEDULED' | 'VIEWING_COMPLETED' | 'CLOSED' | 'REJECTED';
+  status: string;
   lastMessageAt: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -20,17 +20,23 @@ export interface ClientLead {
 export interface LeadMessage {
   id: string;
   leadId: string;
-  senderType: 'BOT' | 'TENANT' | 'AGENT' | 'LANDLORD' | 'SELLER';
+  senderType: string;
   content: string;
   timestamp: Date;
 }
 
 export interface UpdateLeadStatusDto {
-  status: 'NEW' | 'CONTACTED' | 'VIEWING_SCHEDULED' | 'VIEWING_COMPLETED' | 'CLOSED' | 'REJECTED';
+  status: string;
 }
 
 export interface SendMessageToLeadDto {
   content: string;
+}
+
+export interface LeadFilters {
+  search?: string;
+  status?: string;
+  apartmentId?: string;
 }
 
 @Injectable({
@@ -41,8 +47,13 @@ export class ClientLeadService {
 
   constructor(private http: HttpClient) {}
 
-  getAll(): Observable<any> {
-    return this.http.get(`${this.apiUrl}`);
+  getAll(filters: LeadFilters = {}): Observable<any> {
+    let params = new HttpParams();
+    if (filters.search) params = params.set('search', filters.search);
+    if (filters.status) params = params.set('status', filters.status);
+    if (filters.apartmentId) params = params.set('apartmentId', filters.apartmentId);
+    
+    return this.http.get(`${this.apiUrl}`, { params });
   }
 
   getById(id: string): Observable<any> {

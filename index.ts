@@ -23,6 +23,9 @@ async function main() {
     }));
     
     app.use(express.json()); // חובה כדי לקרוא JSON מ-Postman
+    
+    // Serve uploaded files statically
+    app.use('/uploads', express.static('uploads'));
 
     // 1. אתחול תשתיות
     const ragService = new RagService();

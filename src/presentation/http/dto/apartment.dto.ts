@@ -10,21 +10,33 @@ export class CreateApartmentDto {
   rooms: number;
   description?: string;
   address?: string;
+  floor?: number;
+  sqm?: number;
+  arnona?: number;
+  vaadBayit?: number;
+  collateral?: string;
+  priceFlexibility?: boolean;
+  entryDate?: string;
+  balcony?: boolean;
+  shelter?: boolean;
+  mamad?: boolean;
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  parking?: boolean;
+  elevator?: boolean;
+  nearbyConstruction?: boolean;
+  neighbors?: string;
+  commercialCenter?: string;
+  schools?: string;
+  entertainmentAreas?: string;
+  contactPhone?: string;
   images?: string[];
+  documents?: string[];
   videoUrl?: string;
-  calendarLink?: string;
   availability?: TimeSlot[];
 }
 
-export class UpdateApartmentDto {
-  price?: number;
-  description?: string;
-  address?: string;
-  availability?: TimeSlot[];
-  images?: string[];
-  videoUrl?: string;
-  calendarLink?: string;
-}
+export interface UpdateApartmentDto extends Partial<CreateApartmentDto> {}
 
 export class ApartmentResponseDto {
   id: string;
@@ -33,9 +45,29 @@ export class ApartmentResponseDto {
   rooms: number;
   description?: string;
   address?: string;
+  floor?: number;
+  sqm?: number;
+  arnona?: number;
+  vaadBayit?: number;
+  collateral?: string;
+  priceFlexibility: boolean;
+  entryDate?: Date;
+  balcony: boolean;
+  shelter: boolean;
+  mamad: boolean;
+  furnished: boolean;
+  petsAllowed: boolean;
+  parking: boolean;
+  elevator: boolean;
+  nearbyConstruction: boolean;
+  neighbors?: string;
+  commercialCenter?: string;
+  schools?: string;
+  entertainmentAreas?: string;
+  contactPhone?: string;
   images: string[];
+  documents: string[];
   videoUrl?: string;
-  calendarLink?: string;
   availability?: TimeSlot[];
   createdAt: Date;
   userId?: string;

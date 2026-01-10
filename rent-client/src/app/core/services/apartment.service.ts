@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 
 export interface Apartment {
@@ -9,9 +9,29 @@ export interface Apartment {
   rooms: number;
   description?: string;
   address?: string;
+  floor?: number;
+  sqm?: number;
+  arnona?: number;
+  vaadBayit?: number;
+  collateral?: string;
+  priceFlexibility: boolean;
+  entryDate?: Date;
+  balcony: boolean;
+  shelter: boolean;
+  mamad: boolean;
+  furnished: boolean;
+  petsAllowed: boolean;
+  parking: boolean;
+  elevator: boolean;
+  nearbyConstruction: boolean;
+  neighbors?: string;
+  commercialCenter?: string;
+  schools?: string;
+  entertainmentAreas?: string;
+  contactPhone?: string;
   images?: string[];
-  videoUrl?: string;
-  calendarLink?: string;
+  documents?: string[];
+  video_url?: string;
   availability?: TimeSlot[];
   createdAt: Date;
   userId?: string;
@@ -28,20 +48,39 @@ export interface CreateApartmentDto {
   rooms: number;
   description?: string;
   address?: string;
+  floor?: number;
+  sqm?: number;
+  arnona?: number;
+  vaadBayit?: number;
+  collateral?: string;
+  priceFlexibility?: boolean;
+  entryDate?: string;
+  balcony?: boolean;
+  shelter?: boolean;
+  mamad?: boolean;
+  furnished?: boolean;
+  petsAllowed?: boolean;
+  parking?: boolean;
+  elevator?: boolean;
+  nearbyConstruction?: boolean;
+  neighbors?: string;
+  commercialCenter?: string;
+  schools?: string;
+  entertainmentAreas?: string;
+  contactPhone?: string;
   images?: string[];
+  documents?: string[];
   videoUrl?: string;
-  calendarLink?: string;
   availability?: TimeSlot[];
 }
 
-export interface UpdateApartmentDto {
-  price?: number;
-  description?: string;
-  address?: string;
-  availability?: TimeSlot[];
-  images?: string[];
-  videoUrl?: string;
-  calendarLink?: string;
+export interface UpdateApartmentDto extends Partial<CreateApartmentDto> {}
+
+export interface ApartmentFilters {
+  search?: string;
+  city?: string;
+  minPrice?: number;
+  maxPrice?: number;
 }
 
 @Injectable({
@@ -56,12 +95,22 @@ export class ApartmentService {
     return this.http.post(`${this.apiUrl}`, apartment);
   }
 
-  getAll(): Observable<any> {
-    return this.http.get(`${this.apiUrl}`);
+  getAll(filters: ApartmentFilters = {}): Observable<any> {
+    let params = new HttpParams();
+    if (filters.search) params = params.set('search', filters.search);
+    if (filters.city) params = params.set('city', filters.city);
+    if (filters.minPrice) params = params.set('minPrice', filters.minPrice.toString());
+    if (filters.maxPrice) params = params.set('maxPrice', filters.maxPrice.toString());
+    
+    return this.http.get(`${this.apiUrl}`, { params });
   }
 
   getById(id: string): Observable<any> {
     return this.http.get(`${this.apiUrl}/${id}`);
+  }
+
+  getPublicById(id: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/public/${id}`);
   }
 
   update(id: string, apartment: UpdateApartmentDto): Observable<any> {

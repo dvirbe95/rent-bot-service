@@ -1,9 +1,16 @@
 <div class="container">
   <div class="header">
     <h1>הנכסים שלי</h1>
-    <button mat-raised-button color="primary" routerLink="create">
-      <mat-icon>add</mat-icon> נכס חדש
-    </button>
+    <div class="actions">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>חיפוש חופשי (עיר, כתובת, תיאור...)</mat-label>
+        <input matInput [formControl]="searchControl">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+      <button mat-raised-button color="primary" routerLink="create">
+        <mat-icon>add</mat-icon> נכס חדש
+      </button>
+    </div>
   </div>
 
   <mat-card *ngIf="!loading">
@@ -11,6 +18,11 @@
       <ng-container matColumnDef="city">
         <th mat-header-cell *matHeaderCellDef> עיר </th>
         <td mat-cell *matCellDef="let element"> {{element.city}} </td>
+      </ng-container>
+
+      <ng-container matColumnDef="address">
+        <th mat-header-cell *matHeaderCellDef> כתובת </th>
+        <td mat-cell *matCellDef="let element"> {{element.address || '-'}} </td>
       </ng-container>
 
       <ng-container matColumnDef="price">
@@ -26,10 +38,10 @@
       <ng-container matColumnDef="actions">
         <th mat-header-cell *matHeaderCellDef> פעולות </th>
         <td mat-cell *matCellDef="let element">
-          <button mat-icon-button color="primary" [routerLink]="['edit', element.id]">
+          <button mat-icon-button color="primary" [routerLink]="['edit', element.id]" matTooltip="ערוך נכס">
             <mat-icon>edit</mat-icon>
           </button>
-          <button mat-icon-button color="warn" (click)="deleteApartment(element.id)">
+          <button mat-icon-button color="warn" (click)="deleteApartment(element.id)" matTooltip="מחק נכס">
             <mat-icon>delete</mat-icon>
           </button>
         </td>
@@ -38,9 +50,13 @@
       <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
       <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
     </table>
+
+    <div class="empty-state" *ngIf="apartments.length === 0">
+      <p>לא נמצאו נכסים העונים לחיפוש שלך.</p>
+    </div>
   </mat-card>
 
   <div class="loading" *ngIf="loading">
-    <mat-spinner></mat-spinner>
+    <mat-spinner diameter="50"></mat-spinner>
   </div>
 </div>

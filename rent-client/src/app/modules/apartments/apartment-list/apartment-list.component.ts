@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { ApartmentService } from '../../../core/services/apartment.service';
+import { ApartmentService, ApartmentFilters } from '../../../core/services/apartment.service';
+import { FormControl } from '@angular/forms';
+import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 
 @Component({
   selector: 'app-apartment-list',
@@ -8,17 +10,31 @@ import { ApartmentService } from '../../../core/services/apartment.service';
 })
 export class ApartmentListComponent implements OnInit {
   apartments: any[] = [];
-  displayedColumns: string[] = ['city', 'price', 'rooms', 'actions'];
+  displayedColumns: string[] = ['city', 'address', 'price', 'rooms', 'actions'];
   loading = true;
+
+  // Filters
+  searchControl = new FormControl('');
+  filters: ApartmentFilters = {};
 
   constructor(private apartmentService: ApartmentService) {}
 
   ngOnInit() {
     this.loadApartments();
+
+    // Listen to search changes
+    this.searchControl.valueChanges.pipe(
+      debounceTime(400),
+      distinctUntilChanged()
+    ).subscribe(value => {
+      this.filters.search = value || '';
+      this.loadApartments();
+    });
   }
 
   loadApartments() {
-    this.apartmentService.getAll().subscribe({
+    this.loading = true;
+    this.apartmentService.getAll(this.filters).subscribe({
       next: (res) => {
         this.apartments = res.apartments;
         this.loading = false;
@@ -31,5 +47,10 @@ export class ApartmentListComponent implements OnInit {
     if (confirm('האם אתה בטוח שברצונך למחוק נכס זה?')) {
       this.apartmentService.delete(id).subscribe(() => this.loadApartments());
     }
+  }
+
+  applyFilters(newFilters: ApartmentFilters) {
+    this.filters = { ...this.filters, ...newFilters };
+    this.loadApartments();
   }
 }

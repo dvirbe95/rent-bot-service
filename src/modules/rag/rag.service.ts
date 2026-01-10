@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export class RagService {
     private genAI: GoogleGenerativeAI;
@@ -9,47 +9,80 @@ export class RagService {
         this.genAI = new GoogleGenerativeAI(apiKey);
     }
 
+    private formatApartmentContext(apartment: any): string {
+        const booleanFields = [
+            { key: 'balcony', label: 'מרפסת' },
+            { key: 'shelter', label: 'מקלט' },
+            { key: 'mamad', label: 'ממ"ד' },
+            { key: 'furnished', label: 'מרוהטת' },
+            { key: 'petsAllowed', label: 'מותר בעלי חיים' },
+            { key: 'parking', label: 'חניה' },
+            { key: 'elevator', label: 'מעלית' },
+            { key: 'nearbyConstruction', label: 'בניה בקרבת מקום' },
+            { key: 'priceFlexibility', label: 'גמישות במחיר' },
+        ];
+
+        let context = `
+            עיר: ${apartment.city}
+            כתובת: ${apartment.address || 'לא צוין'}
+            מחיר: ${apartment.price} ₪
+            חדרים: ${apartment.rooms}
+            קומה: ${apartment.floor || 'לא צוין'}
+            מ"ר: ${apartment.sqm || 'לא צוין'}
+            ארנונה: ${apartment.arnona || 'לא צוין'} ₪
+            ועד בית: ${apartment.vaadBayit || 'לא צוין'} ₪
+            ערבונות: ${apartment.collateral || 'לא צוין'}
+            תאריך כניסה: ${apartment.entryDate ? new Date(apartment.entryDate).toLocaleDateString('he-IL') : 'מיידי/גמיש'}
+            תיאור: ${apartment.description || ''}
+            שכנים: ${apartment.neighbors || 'לא צוין'}
+            מרכז מסחרי קרוב: ${apartment.commercialCenter || 'לא צוין'}
+            בתי ספר וגנים: ${apartment.schools || 'לא צוין'}
+            איזורי בילוי: ${apartment.entertainmentAreas || 'לא צוין'}
+            טלפון ליצירת קשר: ${apartment.contactPhone || 'לא צוין'}
+        `;
+
+        booleanFields.forEach(field => {
+            if (apartment[field.key]) {
+                context += `${field.label}: כן\n`;
+            } else if (apartment[field.key] === false) {
+                context += `${field.label}: לא\n`;
+            }
+        });
+
+        return context;
+    }
+
     async extractApartmentDetails(text: string) {
         try {
-            // שימוש בגרסה הספציפית ביותר של המודל
-            const model = this.genAI.getGenerativeModel({ 
-                model: "gemini-2.5-flash" 
-            });
-
+            const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             const prompt = `
                 Analyze this Hebrew text about an apartment and extract details into JSON.
-                JSON Structure:
+                Text: "${text}"
+                Return ONLY JSON following this structure:
                 {
                     "city": "string",
                     "price": number,
                     "rooms": number,
                     "description": "string",
-                    "suggest_media": true
+                    "address": "string",
+                    "floor": number,
+                    "sqm": number,
+                    "arnona": number,
+                    "vaadBayit": number,
+                    "balcony": boolean,
+                    "parking": boolean,
+                    "elevator": boolean
                 }
-                Text: "${text}"
-                Return ONLY JSON.
             `;
 
             const result = await model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: {
-                    // הכרחי כדי למנוע את שגיאת ה-404 בחלק מהאזורים
-                    responseMimeType: "application/json",
-                },
+                generationConfig: { responseMimeType: "application/json" },
             });
 
-            const response = await result.response;
-            const responseText = response.text();
-            
-            console.log("🤖 Gemini Response:", responseText);
-            
-            return JSON.parse(responseText);
+            return JSON.parse(result.response.text());
         } catch (error: any) {
-            // אם עדיין יש 404, ננסה לוג מפורט יותר
             console.error("❌ Gemini Service Error:", error.message);
-            if (error.message.includes("404")) {
-                console.log("💡 Tip: Try checking if your API Key is restricted to a specific project or region.");
-            }
             return null;
         }
     }
@@ -57,88 +90,37 @@ export class RagService {
     async answerQuestionAboutApartment(question: string, apartment: any) {
         try {
             const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const apartmentContext = this.formatApartmentContext(apartment);
+            const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+            const publicLink = `${frontendUrl}/p/${apartment.id}`;
+            
             const prompt = `
-                You are a real estate assistant for this apartment:
-                City: ${apartment.city}, Price: ${apartment.price}, Details: ${apartment.description}.
+                אתה עוזר נדל"ן אישי וחכם. ענה על השאלה של הלקוח לגבי הנכס הבא בעברית.
+                השתמש אך ורק במידע שסופק כאן. אם מידע חסר, ציין שאינך יודע והצע להשאיר הודעה למפרסם.
                 
-                User Question: "${question}"
+                נתוני הנכס:
+                ${apartmentContext}
+                
+                לינק לפרופיל המלא: ${publicLink}
+                שאלה: "${question}"
 
-                Instructions:
-                1. Answer the question in Hebrew based ONLY on the details provided.
-                2. Action logic:
-                   - If the user explicitly asks for photos/images, set action to "SEND_IMAGES".
-                   - If the user expresses clear interest (e.g., "I want it", "How do I see it?", "Can we meet?") OR if you have finished answering all their technical questions and they seem satisfied, set action to "BOOK_TOUR".
-                   - Otherwise, set action to "NONE".
-
-                Return ONLY JSON:
+                הוראות:
+                1. ענה בצורה שירותית, אדיבה ומקצועית.
+                2. בסוף התשובה, אם זה רלוונטי, הפנה את הלקוח לצפייה בתמונות ופרטים נוספים בלינק: ${publicLink}
+                3. אם הלקוח שואל על תמונות, הגדר action ל-"SEND_IMAGES".
+                4. אם הלקוח מביע עניין רב או רוצה לתאם, הגדר action ל-"BOOK_TOUR".
+                
+                החזר אך ורק JSON במבנה הבא:
                 {
-                    "answer": "Friendly Hebrew answer",
+                    "answer": "תשובה בעברית",
                     "action": "SEND_IMAGES" | "BOOK_TOUR" | "NONE"
                 }
             `;
 
             const result = await model.generateContent(prompt);
-            const responseText = result.response.text().replace(/```json|```/g, "").trim();
-            return JSON.parse(responseText);
+            return JSON.parse(result.response.text().replace(/```json|```/g, "").trim());
         } catch (error) {
-            return { answer: "חלה שגיאה בחיבור לבינה המלאכותית.", action: "NONE" };
-        }
-    }
-
-    // src/modules/rag/rag.service.ts
-
-    async extractAvailability(text: string) {
-        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = `
-            Analyze the following Hebrew text and extract specific available time slots for an apartment viewing.
-            Convert relative dates (like "tomorrow" or "Friday") to actual dates based on today's date: ${new Date().toLocaleDateString()}.
-            
-            Text: "${text}"
-            
-            Return ONLY a JSON array of objects:
-            [{"start": "YYYY-MM-DDTHH:mm:00", "end": "YYYY-MM-DDTHH:mm:00"}]
-        `;
-        const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text().replace(/```json|```/g, ""));
-    }
-
-    async extractPropertyUpdates(text: string) {
-        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const prompt = `
-            The user wants to update their apartment details. Extract the changes from this text: "${text}"
-            Map them to these fields: price (number), description (string), rooms (number).
-            Return ONLY JSON of the changed fields. Example: {"price": 5500}
-        `;
-        const result = await model.generateContent(prompt);
-        return JSON.parse(result.response.text().replace(/```json|```/g, ""));
-    }
-
-    async extractSingleSlot(userText: string, availability: any[]) {
-        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-        
-        const prompt = `
-            You are a scheduling assistant. 
-            Available slots for the apartment: ${JSON.stringify(availability)}
-            User message: "${userText}"
-            Today's date: ${new Date().toISOString()}
-
-            Task:
-            1. Identify which available slot the user is choosing.
-            2. If the user mentions a specific time from the list, return that object.
-            3. If the user is vague but it matches one slot (e.g., "Sunday" when there's only one Sunday), return it.
-            
-            Return ONLY the JSON object of the chosen slot from the list. 
-            If no match is found, return "null".
-        `;
-
-        try {
-            const result = await model.generateContent(prompt);
-            const text = result.response.text().replace(/```json|```/g, "").trim();
-            if (text === "null") return null;
-            return JSON.parse(text);
-        } catch (error) {
-            console.error("Error extracting single slot:", error);
-            return null;
+            return { answer: "מצטער, אני מתקשה לענות כרגע. תרצה שאחבר אותך למפרסם?", action: "NONE" };
         }
     }
 
@@ -160,95 +142,43 @@ export class RagService {
     }): Promise<string> {
         try {
             const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            
+            const apartmentContext = this.formatApartmentContext(apartment);
+            const shortId = apartment.id.split('-')[0];
+            const botDeepLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
+
             const toneDescription = {
                 professional: 'מקצועי, ענייני, פורמלי',
                 casual: 'קליל, לא פורמלי, ידידותי',
                 friendly: 'חם, מזמין, אישי'
             }[options.tone || 'professional'];
 
-            const emojiInstruction = options.includeEmojis !== false 
-                ? `הוסף אימוג'יים רלוונטיים (🏠, 📍, 💰 וכו')` 
-                : `אל תוסיף אימוג'יים`;
-
-            const platformGuidelines = {
-                TELEGRAM: 'עבור טלגרם - טקסט שיווקי חזק, מובנה עם נקודות (bullets), שימוש נדיב באימוג\'יים, והדגשות.',
-                WHATSAPP: 'עבור וואטסאפ - טקסט קצר, קולע, מתאים להעברה בקבוצות, עם פרטים ליצירת קשר.',
-                FACEBOOK: 'עבור פייסבוק - פוסט ארוך ומפורט, סיפורי, מזמין תגובות, כולל פרטים על הסביבה (גנים, תחבורה וכו\').',
-                INSTAGRAM: 'עבור אינסטגרם - טקסט קליל, צעיר, ממוקד ב"לייף סטייל" וחוויית המגורים.'
-            }[options.platform];
-
-            const shortId = apartment.id.split('-')[0];
-            const botDeepLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
-
-            // הכנת נתונים מפורטים עבור ה-AI
-            const availabilityText = apartment.availability ? 
-                (Array.isArray(apartment.availability) ? `זמין לביקורים במועדים הבאים: ${JSON.stringify(apartment.availability)}` : 'יש זמינות גמישה לביקורים') : 
-                'תאום ביקורים מול הבוט';
-            
-            const mediaInfo = `${apartment.images?.length || 0} תמונות ${apartment.video_url ? 'וסרטון וידאו' : ''}`;
-
             const prompt = `
-אתה מומחה קופירייטינג לנדל"ן מהשורה הראשונה. המשימה שלך היא ליצור פוסט שיווקי עוצמתי, אינפורמטיבי ומפתה.
-השתמש בכל הנתונים הבאים על הנכס כדי לבנות את המודעה:
+                צור פוסט שיווקי מושלם לפלטפורמה ${options.platform} בטון ${toneDescription}.
+                השתמש בנתונים הבאים:
+                ${apartmentContext}
+                
+                הוראות:
+                1. כותרת מושכת.
+                2. הדגש יתרונות (מרפסת, חניה, קרוב לבתי ספר וכו').
+                3. הנעה לפעולה בסוף עם הלינק: ${botDeepLink}
+                ${options.includeEmojis ? 'הוסף אימוג\'יים מתאימים.' : 'ללא אימוג\'יים.'}
+            `;
 
---- נתוני הנכס ---
-📍 עיר: ${apartment.city}
-🏠 חדרים: ${apartment.rooms}
-💰 מחיר: ${apartment.price} ₪
-📍 כתובת: ${apartment.address || 'לא צוין'}
-📝 תיאור חופשי: "${apartment.description || ''}"
-📅 זמינות לביקורים: ${availabilityText}
-📸 מדיה קיימת: ${mediaInfo}
-🔗 לינק ישיר לתיאום בבוט: ${botDeepLink}
-------------------
-
-הוראות כתיבה מחייבות:
-1. כותרת: צור כותרת "מפוצצת" שתגרום לאנשים לעצור את הגלילה.
-2. מבנה: השתמש בנקודות (bullets) כדי להציג את היתרונות של הדירה בצורה נקייה ומקצועית.
-3. פירוט מקסימלי: אל תחסיר אף פרט. אם צוין שיש מקרר, מעלית, או שהמיקום קרוב לרכבת - תהפוך את זה ליתרון שיווקי בולט.
-4. טון: ${toneDescription}.
-5. ${emojiInstruction}.
-6. ${platformGuidelines}.
-7. סיומת וקריאה לפעולה (CTA):
-   הפוסט חייב להסתיים בדיוק בנוסח הזה (כולל האימוג'י):
-   
-   👇 לפרטים נוספים, צפייה בכל התמונות והסרטונים, ותיאום סיור מיידי ביומן שלי - לחצו כאן:
-   ${botDeepLink}
-
-פורמט הפלט:
-- רק את טקסט הפוסט עצמו.
-- רווח כפול בין פסקאות.
-`;
-
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1000,
-                },
-            });
-
+            const result = await model.generateContent(prompt);
             let responseText = result.response.text().trim();
-            
-            // הבטחה שהלינק מופיע - הזרקה ידנית בסוף במידה וה-AI שכח או לתוספת ביטחון
             if (!responseText.includes(botDeepLink)) {
-                responseText += `\n\n👇 לפרטים נוספים, צפייה בכל התמונות והסרטונים, ותיאום סיור מיידי בבוט החכם שלי - לחצו כאן:\n${botDeepLink}`;
+                responseText += `\n\n👇 לפרטים נוספים ותיאום סיור מיידי:\n${botDeepLink}`;
             }
-
             return responseText;
-        } catch (error: any) {
-            console.error("❌ Post Generation Error:", error.message);
-            // יצירת פוסט פשוט חלופי במקרה של שגיאה
-            return this.createFallbackPost(apartment, options);
+        } catch (error) {
+            return `דירה ב${apartment.city} למכירה/השכרה. לפרטים: https://t.me/dvir_rent_bot?start=${apartment.id.split('-')[0]}`;
         }
     }
 
-    private createFallbackPost(apartment: any, options: any): string {
-        const shortId = apartment.id.split('-')[0];
-        const botDeepLink = `https://t.me/dvir_rent_bot?start=${shortId}`;
-        const emoji = options.includeEmojis !== false ? '🏠' : '';
-        
-        return `🌟 הזדמנות חדשה ב${apartment.city}! 🌟\n\n${emoji} דירת ${apartment.rooms} חדרים\n💰 מחיר: ${apartment.price} ש"ח\n📍 כתובת: ${apartment.address || 'צרו קשר לפרטים'}\n\n${apartment.description ? `📝 תיאור: ${apartment.description}\n\n` : ''}לפרטים נוספים, תמונות ותיאום סיור בבוט שלנו:\n${botDeepLink}`;
+    async extractAvailability(text: string) {
+        const model = this.genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+        const prompt = `בצע חילוץ של זמני פנוי לביקור בפורמט JSON: [{"start": "...", "end": "..."}]. טקסט: ${text}`;
+        const result = await model.generateContent(prompt);
+        return JSON.parse(result.response.text().replace(/```json|```/g, ""));
     }
 }

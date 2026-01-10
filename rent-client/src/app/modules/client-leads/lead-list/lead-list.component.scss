@@ -1,9 +1,28 @@
 .container {
   padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .header {
   margin-bottom: 24px;
+  h1 { margin: 0; }
+}
+
+.filters-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+
+  mat-form-field {
+    flex: 1;
+    min-width: 200px;
+    
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
 }
 
 .full-width {
@@ -13,19 +32,22 @@
 .loading {
   display: flex;
   justify-content: center;
-  padding: 48px;
+  padding: 40px;
 }
 
-mat-chip-listbox {
-  display: inline-block;
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #666;
 }
 
 @media (max-width: 600px) {
-  .container {
-    padding: 12px;
-  }
-  
-  .mat-column-lastMessageAt {
-    display: none;
+  .filters-row {
+    flex-direction: column;
+    gap: 8px;
+    
+    mat-form-field {
+      width: 100%;
+    }
   }
 }

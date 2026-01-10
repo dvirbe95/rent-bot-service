@@ -6,7 +6,10 @@ import { webAuth } from '../../../middlewares/web-auth.middleware';
 const router = Router();
 const apartmentController = new ApartmentController();
 
-// כל ה-Routes מוגנים ב-webAuth
+// נתיב ציבורי לצפייה בפרופיל נכס (ללא התחברות)
+router.get('/public/:id', apartmentController.getPublicById);
+
+// כל שאר ה-Routes מוגנים ב-webAuth
 router.use(webAuth);
 
 router.post('/', apartmentController.create);

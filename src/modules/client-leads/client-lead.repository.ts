@@ -47,8 +47,9 @@ export class ClientLeadRepository {
     });
   }
 
-  async findByUserId(userId: string) {
-    // מוצא את כל הלידים של הנכסים של המשתמש
+  async findByUserId(userId: string, filters: any = {}) {
+    const { search, status, apartmentId } = filters;
+
     const apartments = await this.prisma.apartment.findMany({
       where: { userId },
       select: { id: true },
@@ -58,9 +59,13 @@ export class ClientLeadRepository {
 
     return await this.prisma.clientLead.findMany({
       where: {
-        apartmentId: {
-          in: apartmentIds,
-        },
+        apartmentId: apartmentId ? apartmentId : { in: apartmentIds },
+        status: status ? status : undefined,
+        OR: search ? [
+          { tenantName: { contains: search, mode: 'insensitive' } },
+          { tenantPhone: { contains: search, mode: 'insensitive' } },
+          { tenantEmail: { contains: search, mode: 'insensitive' } },
+        ] : undefined
       },
       include: {
         apartment: true,

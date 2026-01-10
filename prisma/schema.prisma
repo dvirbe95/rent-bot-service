@@ -1,6 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
+// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,21 +10,18 @@ datasource db {
 
 model User {
   id              String   @id @default(uuid())
-  chatId          String?  @unique // Telegram Chat ID
+  chatId          String?  @unique
   name            String?
-  phone           String?  @unique // מזהה ייחודי לבוט ולמשתמשים
+  phone           String?  @unique
   email           String?  @unique
-  password        String?  // לאפליקציה (מתווכים)
+  password        String?
   role            UserRole @default(USER)
-  
   apartments      Apartment[]
-  posts           Post[]   
-  
-  metadata        Json?    
-  current_step    String?  @default("START") // לשימוש הבוט
+  posts           Post[]
+  metadata        Json?
+  current_step    String?  @default("START")
   subscriptionStatus Boolean @default(false)
   planExpiresAt   DateTime?
-  
   lastLogin       DateTime @default(now())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -39,19 +34,50 @@ model Apartment {
   userId          String
   user            User     @relation(fields: [userId], references: [id])
   
+  // פרטי בסיס
   city            String
+  address         String?
   price           Float
   rooms           Float
+  floor           Int?
+  sqm             Int?
+  
+  // פרטים פיננסיים ל-AI
+  arnona          Float?
+  vaadBayit       Float?
+  collateral      String?  // ערבונות
+  priceFlexibility Boolean @default(false)
+  
+  // מאפייני נכס
   description     String?
-  address         String?
-  availability    Json?    
+  entryDate       DateTime?
+  balcony         Boolean @default(false)
+  shelter         Boolean @default(false) // מקלט
+  mamad           Boolean @default(false) // ממ"ד
+  furnished       Boolean @default(false)
+  petsAllowed     Boolean @default(true)
+  parking         Boolean @default(false)
+  elevator        Boolean @default(false)
+  
+  // סביבה (ל-AI)
+  nearbyConstruction Boolean @default(false)
+  neighbors       String?
+  commercialCenter String?
+  schools         String?
+  entertainmentAreas String?
+  
+  // יצירת קשר וניהול
+  contactPhone    String?
+  availability    Json?    // מערך של טווחי זמנים לביקורים
+  
+  // מדיה ומסמכים
   images          String[]
   video_url       String?
+  documents       String[] // לינקים למסמכים (חוזה, טיוטה וכו')
   
-  embeddings      Float[]  
-  
+  embeddings      Float[]
   clientLeads     ClientLead[]
-  posts           Post[]   
+  posts           Post[]
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -63,17 +89,14 @@ model ClientLead {
   id              String   @id @default(uuid())
   apartmentId     String
   apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
-  
-  tenantChatId    String   
+  tenantChatId    String
   tenantName      String?
   tenantPhone     String?
   tenantEmail     String?
-  
   status          LeadStatus @default(NEW)
   lastMessageAt   DateTime @default(now())
   messages        LeadMessage[]
   meetings        Meeting[]
-  
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -86,11 +109,9 @@ model LeadMessage {
   id          String   @id @default(uuid())
   leadId      String
   lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  
-  senderType  SenderType 
+  senderType  SenderType
   content     String
   timestamp   DateTime @default(now())
-  
   @@index([leadId])
   @@map("lead_messages")
 }
@@ -99,14 +120,11 @@ model Meeting {
   id          String   @id @default(uuid())
   leadId      String
   lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  
   startTime   DateTime
   endTime     DateTime
   location    String?
   status      MeetingStatus @default(SCHEDULED)
-  
   createdAt   DateTime @default(now())
-  
   @@index([leadId])
   @@map("meetings")
 }
@@ -117,13 +135,10 @@ model Post {
   apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
   userId          String
   user            User     @relation(fields: [userId], references: [id])
-  
-  content         String   
+  content         String
   platform        PostPlatform
-  publishedAt     DateTime? 
-  
+  publishedAt     DateTime?
   createdAt       DateTime @default(now())
-  
   @@index([apartmentId])
   @@index([userId])
   @@map("posts")

@@ -1,4 +1,7 @@
 import { Telegraf } from "telegraf";
+import fs from "fs";
+import path from "path";
+import { PrismaService } from "../../common/database/prisma.client";
 import { UserRepository } from "../../modules/users/user.repository";
 import { ApartmentRepository } from "../../modules/apartments/apartment.repository";
 import {
@@ -12,6 +15,7 @@ export class TelegramService implements IMessagingService {
   private apartmentRepository: ApartmentRepository;
   private userRepository: UserRepository;
   private calendarService: CalendarService;
+  private prisma = PrismaService.getClient();
 
   constructor(token: string, private controller: any, private app: any) {
     this.bot = new Telegraf(token);
@@ -364,31 +368,57 @@ const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה �
     }
   }
 
-  async sendMedia(chatId: string, apartment: any) {
-    for (const img of apartment.images || []) {
-      await this.bot.telegram.sendPhoto(chatId, img);
+  async sendMedia(chatId: string, data: any) {
+    const images = Array.isArray(data) ? data : (data?.images || []);
+    
+    for (const img of images) {
+      try {
+        if (img.includes('localhost:3000/uploads/')) {
+          // חילוץ הנתיב הלוקאלי (למשל uploads/images/filename.jpg)
+          const relativePath = img.split('localhost:3000/')[1];
+          const absolutePath = path.resolve(relativePath);
+          
+          if (fs.existsSync(absolutePath)) {
+            await this.bot.telegram.sendPhoto(chatId, { source: absolutePath });
+          } else {
+            console.error(`File not found: ${absolutePath}`);
+          }
+        } else {
+          // שליחה כ-URL רגיל עבור סביבת פרודקשן
+          await this.bot.telegram.sendPhoto(chatId, img);
+        }
+      } catch (error) {
+        console.error(`Error sending photo ${img}:`, error);
+      }
     }
   }
 
   private async sendApartmentMenu(ctx: any, apartment: any) {
-    const shortId = apartment.id.split("-")[0];
-    return await ctx.reply(
-      `מה תרצה לעשות?`,
-      {
+    if (!apartment) return;
+
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+    const publicUrl = `${frontendUrl}/p/${apartment.id}`;
+    const isLocal = frontendUrl.includes('localhost');
+
+    const buttons: any[] = [
+        [{ text: "📸 תמונות", callback_data: "get_media" }],
+        [{ text: "📅 תיאום סיור", callback_data: "get_slots" }],
+        [{ text: "❓ שאל שאלה", callback_data: "ask_question" }]
+    ];
+
+    if (!isLocal) {
+        buttons.unshift([{ text: "📊 פרופיל מלא (Web)", url: publicUrl }]);
+    }
+
+    const text = isLocal 
+        ? `מה תרצה לעשות?\n\n🔗 **לינק לפרופיל:** ${publicUrl}`
+        : `מה תרצה לעשות?`;
+
+    return await ctx.reply(text, {
+        parse_mode: "HTML",
         reply_markup: {
-          inline_keyboard: [
-            [
-              {
-                text: "📊 פרופיל מלא (Web)",
-                web_app: { url: `https://app.com/p/${apartment.id}` },
-              },
-            ],
-            [{ text: "📸 תמונות", callback_data: "get_media" }],
-            [{ text: "📅 תיאום סיור", callback_data: "get_slots" }],
-            [{ text: "❓ שאל שאלה", callback_data: "ask_question" }],
-          ],
-        },
-      }
-    );
+            inline_keyboard: buttons
+        }
+    });
   }
 }

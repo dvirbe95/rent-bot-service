@@ -19,6 +19,10 @@ const routes: Routes = [
     path: 'register', 
     component: RegisterComponent
   },
+  {
+    path: 'p',
+    loadChildren: () => import('./modules/public/public.module').then(m => m.PublicModule)
+  },
   { 
     path: 'dashboard', 
     canActivate: [AuthGuard],
