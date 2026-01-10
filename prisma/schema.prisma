@@ -75,6 +75,11 @@ model Apartment {
   video_url       String?
   documents       String[] // לינקים למסמכים (חוזה, טיוטה וכו')
   
+  // נתוני מיקום והעשרה ממשלתית
+  lat             Float?
+  lng             Float?
+  neighborhoodData Json?    // מידע על תחבורה, חינוך וכו' מ-data.gov.il
+  
   embeddings      Float[]
   clientLeads     ClientLead[]
   posts           Post[]

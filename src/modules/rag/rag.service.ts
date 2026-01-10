@@ -39,6 +39,9 @@ export class RagService {
             בתי ספר וגנים: ${apartment.schools || 'לא צוין'}
             איזורי בילוי: ${apartment.entertainmentAreas || 'לא צוין'}
             טלפון ליצירת קשר: ${apartment.contactPhone || 'לא צוין'}
+            
+            מידע נוסף על הסביבה (נתונים רשמיים):
+            ${apartment.neighborhoodData ? JSON.stringify(apartment.neighborhoodData) : 'אין מידע נוסף'}
         `;
 
         booleanFields.forEach(field => {

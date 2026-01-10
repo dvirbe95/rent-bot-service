@@ -2,12 +2,16 @@
 import { Request, Response } from 'express';
 import { ApartmentRepository } from '../../../modules/apartments/apartment.repository';
 import { RagService } from '../../../modules/rag/rag.service';
+import { GeocodingService } from '../../../modules/external-data/geocoding.service';
+import { GovDataService } from '../../../modules/external-data/gov-data.service';
 import { CreateApartmentDto, UpdateApartmentDto, ApartmentResponseDto } from '../dto/apartment.dto';
 import { NotFoundError, ValidationError } from '../../../shared/errors/app.error';
 
 export class ApartmentController {
     private apartmentRepo = new ApartmentRepository();
     private ragService = new RagService();
+    private geocodingService = new GeocodingService();
+    private govDataService = new GovDataService();
 
     // יצירת נכס חדש
     create = async (req: Request, res: Response): Promise<void> => {
@@ -18,7 +22,6 @@ export class ApartmentController {
                 return;
             }
 
-            // Verify user exists to prevent foreign key violation
             const userRepo = new (await import('../../../modules/users/user.repository')).UserRepository();
             const user = await userRepo.findById(userId);
             if (!user) {
@@ -28,19 +31,35 @@ export class ApartmentController {
 
             const data: CreateApartmentDto = req.body;
             
-            // Validation
             if (!data.city || !data.price || !data.rooms) {
                 throw new ValidationError('Missing required fields: city, price, rooms');
             }
 
-            // יצירת embedding מהתיאור
+            // 1. קבלת קואורדינטות
+            const coords = await this.geocodingService.getCoordinates(data.address || '', data.city);
+            
+            // 2. העשרת נתונים מ-data.gov.il אם נמצאו קואורדינטות
+            let neighborhoodData = null;
+            if (coords) {
+                neighborhoodData = await this.govDataService.getEnrichedNeighborhoodData(
+                    coords.lat, 
+                    coords.lng, 
+                    data.city, 
+                    data.address || undefined
+                );
+            }
+
+            // 3. יצירת embedding מהתיאור
             const descriptionText = `${data.city} ${data.rooms} חדרים ${data.description || ''}`;
             const embedding = await this.ragService.generateEmbedding(descriptionText);
 
-            // יצירת הנכס
+            // 4. יצירת הנכס
             const apartment = await this.apartmentRepo.createApartment({
                 ...data,
                 userId,
+                lat: coords?.lat,
+                lng: coords?.lng,
+                neighborhoodData,
                 video_url: data.videoUrl,
             }, embedding);
 

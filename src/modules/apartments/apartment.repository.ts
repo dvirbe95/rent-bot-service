@@ -9,7 +9,7 @@ export class ApartmentRepository {
             floor, sqm, arnona, vaadBayit, collateral, priceFlexibility, entryDate,
             balcony, shelter, mamad, furnished, petsAllowed, parking, elevator,
             nearbyConstruction, neighbors, commercialCenter, schools, entertainmentAreas,
-            contactPhone, documents
+            contactPhone, documents, lat, lng, neighborhoodData
         } = data;
         
         return await this.prisma.apartment.create({
@@ -44,7 +44,10 @@ export class ApartmentRepository {
                 availability: availability || [],
                 video_url: video_url || null,
                 embeddings: embedding,
-                userId: userId
+                userId: userId,
+                lat: lat ? parseFloat(lat) : null,
+                lng: lng ? parseFloat(lng) : null,
+                neighborhoodData: neighborhoodData || null
             }
         });
     }
@@ -87,7 +90,7 @@ export class ApartmentRepository {
             'balcony', 'shelter', 'mamad', 'furnished', 'petsAllowed', 'parking',
             'elevator', 'nearbyConstruction', 'neighbors', 'commercialCenter',
             'schools', 'entertainmentAreas', 'contactPhone', 'images', 'documents',
-            'availability', 'video_url', 'embeddings'
+            'availability', 'video_url', 'embeddings', 'lat', 'lng', 'neighborhoodData'
         ];
 
         const formattedData: any = {};
@@ -116,6 +119,8 @@ export class ApartmentRepository {
         if (formattedData.parking !== undefined) formattedData.parking = !!formattedData.parking;
         if (formattedData.elevator !== undefined) formattedData.elevator = !!formattedData.elevator;
         if (formattedData.nearbyConstruction !== undefined) formattedData.nearbyConstruction = !!formattedData.nearbyConstruction;
+        if (formattedData.lat !== undefined) formattedData.lat = formattedData.lat ? parseFloat(formattedData.lat) : null;
+        if (formattedData.lng !== undefined) formattedData.lng = formattedData.lng ? parseFloat(formattedData.lng) : null;
 
         return await this.prisma.apartment.update({
             where: { id },

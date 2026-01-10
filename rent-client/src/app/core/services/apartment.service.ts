@@ -33,6 +33,19 @@ export interface Apartment {
   documents?: string[];
   video_url?: string;
   availability?: TimeSlot[];
+  lat?: number;
+  lng?: number;
+  neighborhoodData?: {
+    busStops?: any[];
+    schools?: any[];
+    urbanRenewal?: {
+        isInProject: boolean;
+        projectName?: string;
+        status?: string;
+        type?: string;
+    };
+    lastUpdated?: string;
+  };
   createdAt: Date;
   userId?: string;
 }

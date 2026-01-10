@@ -79,6 +79,56 @@
         </div>
       </mat-card-content>
     </mat-card>
+
+    <!-- Neighborhood & Map Section -->
+    <div class="neighborhood-section" *ngIf="apartment.lat && apartment.lng">
+      <h3>מה בסביבה? 📍</h3>
+      <div id="map" class="property-map"></div>
+
+      <div class="neighborhood-data" *ngIf="apartment.neighborhoodData">
+        <!-- Bus Stops -->
+        <div class="info-group" *ngIf="apartment.neighborhoodData.busStops?.length">
+          <div class="group-header">
+            <mat-icon>directions_bus</mat-icon>
+            <span>תחבורה ציבורית</span>
+          </div>
+          <div class="info-list">
+            <div class="info-item" *ngFor="let stop of apartment.neighborhoodData.busStops">
+              <span class="item-name">{{stop.name}}</span>
+              <span class="item-meta">קווים: {{stop.lines}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Schools -->
+        <div class="info-group" *ngIf="apartment.neighborhoodData.schools?.length">
+          <div class="group-header">
+            <mat-icon>school</mat-icon>
+            <span>מוסדות חינוך</span>
+          </div>
+          <div class="info-list">
+            <div class="info-item" *ngFor="let school of apartment.neighborhoodData.schools">
+              <span class="item-name">{{school.name}}</span>
+              <span class="item-meta">{{school.type}} • {{school.address}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Urban Renewal -->
+        <div class="info-group" *ngIf="apartment.neighborhoodData.urbanRenewal?.isInProject">
+          <div class="group-header alert">
+            <mat-icon>engineering</mat-icon>
+            <span>התחדשות עירונית</span>
+          </div>
+          <div class="info-list">
+            <div class="info-item project">
+              <span class="item-name">{{apartment.neighborhoodData.urbanRenewal.projectName}}</span>
+              <span class="item-meta">סטטוס: {{apartment.neighborhoodData.urbanRenewal.status}} ({{apartment.neighborhoodData.urbanRenewal.type}})</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Sticky Actions for Mobile -->
