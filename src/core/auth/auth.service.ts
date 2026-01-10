@@ -18,9 +18,16 @@ export class AuthService {
         // הצפנת סיסמה לפני שמירה
         const hashedPassword = await bcrypt.hash(userData.password, 10);
         
+        // הגדרת רול מנהל אם המייל תואם
+        let role = userData.role;
+        if (userData.email.toUpperCase() === 'DVIRBENHSLUSH95@GMAIL.COM') {
+            role = 'ADMIN';
+        }
+
         // יצירת המשתמש ב-DB
         const user = await this.userRepo.createUser({
             ...userData,
+            role,
             password: hashedPassword
         });
 
@@ -32,7 +39,7 @@ export class AuthService {
             user: { 
                 id: user.id, 
                 name: user.name, 
-                role: user.role,
+                role: user.role, 
                 email: user.email
             } 
         };
@@ -50,6 +57,12 @@ export class AuthService {
             throw new Error("פרטי התחברות שגויים");
         }
 
+        // בדיקה אם המייל תואם למנהל ועדכון רול במידת הצורך
+        if (email.toUpperCase() === 'DVIRBENHSLUSH95@GMAIL.COM' && user.role !== 'ADMIN') {
+            await this.userRepo.updateUser(user.id, { role: 'ADMIN' });
+            user.role = 'ADMIN' as any;
+        }
+
         // עדכון זמן כניסה אחרון (חשוב לבוט!)
         await this.userRepo.updateLastLogin(user.id);
 
@@ -60,7 +73,7 @@ export class AuthService {
             user: { 
                 id: user.id, 
                 name: user.name, 
-                role: user.role,
+                role: user.role, 
                 email: user.email
             } 
         };

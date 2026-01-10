@@ -2,11 +2,12 @@
   <mat-card class="register-card">
     <mat-card-header>
       <mat-card-title>הרשמה ל-RentBot</mat-card-title>
-      <mat-card-subtitle>הצטרף למערכת ניהול הנכסים החכמה בישראל</mat-card-subtitle>
+      <mat-card-subtitle>{{ step === 'details' ? 'פרטים אישיים' : 'תשלום חד פעמי (20 ₪)' }}</mat-card-subtitle>
     </mat-card-header>
 
-    <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-      <mat-card-content>
+    <mat-card-content>
+      <!-- שלב 1: פרטים -->
+      <form [formGroup]="registerForm" *ngIf="step === 'details'">
         <div class="form-grid">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>שם מלא</mat-label>
@@ -44,17 +45,73 @@
           </mat-form-field>
         </div>
 
-        <p class="error-text" *ngIf="errorMessage">{{ errorMessage }}</p>
-      </mat-card-content>
-
-      <mat-card-actions>
-        <button mat-raised-button color="primary" class="full-width" type="submit" [disabled]="registerForm.invalid || loading">
-          {{ loading ? 'נרשם...' : 'צור חשבון' }}
+        <button mat-raised-button color="primary" class="full-width action-btn" 
+                (click)="goToPayment()" [disabled]="registerForm.invalid">
+          המשך לתשלום (20 ₪)
         </button>
-        <div class="login-link">
-          כבר יש לך חשבון? <a routerLink="/login">התחבר כאן</a>
-        </div>
-      </mat-card-actions>
-    </form>
+      </form>
+
+      <!-- שלב 2: תשלום -->
+      <div *ngIf="step === 'payment'" class="payment-step">
+        <form [formGroup]="paymentForm">
+          <div class="payment-info">
+            <p>להפעלת החשבון, יש לבצע תשלום חד פעמי של <strong>20 ₪</strong>.</p>
+            <div class="secure-badge">
+              <mat-icon>security</mat-icon> תשלום מאובטח באמצעות Stripe
+            </div>
+          </div>
+
+          <div class="card-details-form">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>מספר כרטיס</mat-label>
+              <input matInput formControlName="cardNumber" placeholder="4580 0000 0000 0000">
+              <mat-icon matSuffix>credit_card</mat-icon>
+              <mat-error *ngIf="paymentForm.get('cardNumber')?.hasError('pattern')">מספר כרטיס חייב להכיל 16 ספרות</mat-error>
+            </mat-form-field>
+
+            <div class="payment-row">
+              <mat-form-field appearance="outline">
+                <mat-label>תוקף (MM/YY)</mat-label>
+                <input matInput formControlName="expiry" placeholder="05/28">
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>CVV</mat-label>
+                <input matInput formControlName="cvv" placeholder="123">
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="order-summary">
+            <div class="summary-item">
+              <span>מנוי פרסום נכסים</span>
+              <span>20 ₪</span>
+            </div>
+            <mat-divider></mat-divider>
+            <div class="summary-item total">
+              <span>סה"כ לתשלום</span>
+              <span>20 ₪</span>
+            </div>
+          </div>
+
+          <p class="error-text" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+          <div class="btn-group">
+            <button mat-button type="button" (click)="step = 'details'">חזור</button>
+            <button mat-raised-button color="primary" (click)="onSubmit()" 
+                    [disabled]="loading || paymentForm.invalid">
+              <span *ngIf="!loading">שלם והשלם הרשמה</span>
+              <mat-spinner diameter="20" *ngIf="loading"></mat-spinner>
+            </button>
+          </div>
+        </form>
+      </div>
+    </mat-card-content>
+
+    <mat-card-actions *ngIf="step === 'details'">
+      <div class="login-link">
+        כבר יש לך חשבון? <a routerLink="/login">התחבר כאן</a>
+      </div>
+    </mat-card-actions>
   </mat-card>
 </div>

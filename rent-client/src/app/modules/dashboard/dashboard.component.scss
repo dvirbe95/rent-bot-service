@@ -59,9 +59,47 @@
   margin-bottom: 16px;
 }
 
-.loading-spinner {
+.tenant-welcome-card {
+  max-width: 600px;
+  margin: 40px auto;
   text-align: center;
-  padding: 48px;
-  font-size: 1.2rem;
-  color: #666;
+  padding: 40px 20px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+
+  .welcome-icon {
+    font-size: 4rem;
+    margin-bottom: 20px;
+  }
+
+  h2 {
+    font-size: 2rem;
+    color: #1a237e;
+    margin-bottom: 16px;
+  }
+
+  p {
+    font-size: 1.1rem;
+    color: #666;
+    margin-bottom: 8px;
+  }
+
+  .action-box {
+    margin-top: 32px;
+    
+    a {
+      padding: 12px 32px;
+      font-size: 1.1rem;
+    }
+  }
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  
+  mat-spinner { margin-bottom: 16px; }
 }

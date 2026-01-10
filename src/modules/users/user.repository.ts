@@ -4,16 +4,30 @@ import { PrismaService } from '../../common/database/prisma.client';
 export class UserRepository {
     private prisma = PrismaService.getClient();
 
-    async getOrCreateUser(phone: string) {
+    async getOrCreateUser(chatId: string, name?: string) {
         return await this.prisma.user.upsert({
-            where: { phone },
-            update: {},
+            where: { chatId },
+            update: { name: name },
             create: {
-                phone,
+                chatId,
+                name,
                 role: UserRole.TENANT,
                 current_step: 'START',
                 subscriptionStatus: false
             },
+        });
+    }
+
+    async findByPhone(phone: string) {
+        return await this.prisma.user.findUnique({
+            where: { phone }
+        });
+    }
+
+    async linkChatIdToPhone(phone: string, chatId: string) {
+        return await this.prisma.user.update({
+            where: { phone },
+            data: { chatId }
         });
     }
 

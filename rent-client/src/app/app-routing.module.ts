@@ -8,8 +8,7 @@ import { RegisterComponent } from './modules/auth/register/register.component';
 const routes: Routes = [
   { 
     path: '', 
-    redirectTo: '/dashboard', 
-    pathMatch: 'full' 
+    loadChildren: () => import('./modules/landing/landing.module').then(m => m.LandingModule)
   },
   { 
     path: 'login', 
@@ -27,6 +26,12 @@ const routes: Routes = [
     path: 'dashboard', 
     canActivate: [AuthGuard],
     loadChildren: () => import('./modules/dashboard/dashboard.module').then(m => m.DashboardModule)
+  },
+  { 
+    path: 'admin', 
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['ADMIN'] },
+    loadChildren: () => import('./modules/admin/admin.module').then(m => m.AdminModule)
   },
   { 
     path: 'apartments', 

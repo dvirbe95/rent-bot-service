@@ -11,6 +11,9 @@ import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatSelectModule } from '@angular/material/select';
 import { MatIconModule } from '@angular/material/icon';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { PaymentService } from '../../../core/services/payment.service';
 
 @Component({
   selector: 'app-register',
@@ -24,15 +27,19 @@ import { MatIconModule } from '@angular/material/icon';
     MatInputModule,
     MatButtonModule,
     MatSelectModule,
-    MatIconModule
+    MatIconModule,
+    MatDividerModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './register.component.html',
   styleUrls: ['./register.component.scss']
 })
 export class RegisterComponent implements OnInit {
   registerForm!: FormGroup;
+  paymentForm!: FormGroup;
   errorMessage: string = '';
   loading: boolean = false;
+  step: 'details' | 'payment' = 'details';
 
   roles = [
     { value: 'AGENT', label: 'מתווך נדל"ן (מקצועי)' },
@@ -43,6 +50,7 @@ export class RegisterComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    private paymentService: PaymentService,
     private router: Router
   ) {}
 
@@ -54,21 +62,42 @@ export class RegisterComponent implements OnInit {
       password: ['', [Validators.required, Validators.minLength(6)]],
       role: ['AGENT', [Validators.required]]
     });
+
+    this.paymentForm = this.fb.group({
+      cardNumber: ['', [Validators.required, Validators.pattern(/^[0-9]{16}$/)]],
+      expiry: ['', [Validators.required, Validators.pattern(/^(0[1-9]|1[0-2])\/[0-9]{2}$/)]],
+      cvv: ['', [Validators.required, Validators.pattern(/^[0-9]{3}$/)]]
+    });
+  }
+
+  goToPayment() {
+    if (this.registerForm.valid) {
+      this.step = 'payment';
+    }
   }
 
   onSubmit() {
-    if (this.registerForm.valid) {
+    if (this.registerForm.valid && this.paymentForm.valid) {
       this.loading = true;
       this.errorMessage = '';
       
-      this.authService.register(this.registerForm.value).subscribe({
+      // 1. קודם יוצרים PaymentIntent בשרת (Stripe)
+      this.paymentService.createPaymentIntent(20).subscribe({
         next: (res) => {
-          console.log('Registration successful');
-          this.router.navigate(['/dashboard']);
+          // 2. לאחר הצלחת ה-Intent (בסימולציה שלנו), נשלים את ההרשמה
+          this.authService.register(this.registerForm.value).subscribe({
+            next: (res) => {
+              this.router.navigate(['/dashboard']);
+            },
+            error: (err) => {
+              this.loading = false;
+              this.errorMessage = err.error?.error || 'חלה שגיאה בתהליך ההרשמה.';
+            }
+          });
         },
         error: (err) => {
           this.loading = false;
-          this.errorMessage = err.error?.error || 'חלה שגיאה בתהליך ההרשמה. נסה שוב.';
+          this.errorMessage = 'שגיאה בחיבור לספק התשלומים. נא נסה שוב.';
         }
       });
     }

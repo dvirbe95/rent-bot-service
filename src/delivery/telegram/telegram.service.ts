@@ -26,14 +26,17 @@ export class TelegramService implements IMessagingService {
 
   async init() {
     this.bot.on("text", async (ctx) => {
+      const chatId = ctx.chat.id.toString();
+      const userName = ctx.from.first_name;
+
       const response = await this.controller.handleMessage(
-        ctx.chat.id.toString(),
+        chatId,
         ctx.message.text,
-        ctx.from.first_name
+        userName
       );
 
       // --- הוספת לוגיקת לידים ---
-      const user = await this.userRepository.getOrCreateUser(ctx.chat.id.toString());
+      const user = await this.userRepository.getOrCreateUser(chatId, userName);
       const activeApartmentId = (user.metadata as any)?.active_apartment_id;
       
       if (activeApartmentId) {
@@ -180,7 +183,8 @@ export class TelegramService implements IMessagingService {
 
       // לוגיקת תיאום סיור
       if (data.startsWith("book_slot_")) {
-        const selectedDate = new Date(data.replace("book_slot_", ""));
+        const timestamp = data.replace("book_slot_", "");
+        const selectedDate = new Date(timestamp);
         const timeStr = selectedDate.toLocaleTimeString("he-IL", {
           hour: "2-digit",
           minute: "2-digit",
@@ -195,54 +199,80 @@ export class TelegramService implements IMessagingService {
         );
 
         if (apartment) {
-          // שליחה למפרסם (owner/agent)
-          const agentChatId = apartment.phone_number; // בקוד שלך זה phone_number
+          const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
+          const lead = await leadRepo.getOrCreateLead(apartment.id, chatId, ctx.from.first_name);
 
-          await this.bot.telegram.sendMessage(
-            agentChatId,
-            `🔔 **בקשה לסיור חדש!**\n\n` +
-              `דירה: ${apartment.city}, ${apartment.id.split("-")[0]}\n` +
-              `לקוח: ${ctx.from.first_name} (${chatId})\n` +
-              `מועד מבוקש: ${dateStr} בשעה ${timeStr}\n\n` +
-              `לחץ על הכפתור למטה כדי לאשר לו.`,
-            {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    {
-                      text: "✅ אשר הגעה",
-                      callback_data: `confirm_visit_${chatId}_${data.replace(
-                        "book_slot_",
-                        ""
-                      )}`,
-                    },
-                  ],
-                ],
-              },
+          // שליחה למפרסם (owner/agent)
+          const owner = await this.userRepository.findById(apartment.userId);
+          let agentChatId = owner?.chatId;
+
+          // אם אין chatId, ננסה למצוא לפי הטלפון שלו אם הוא כבר דיבר עם הבוט פעם
+          if (!agentChatId && owner?.phone) {
+            const userInBot = await this.userRepository.findByPhone(owner.phone);
+            if (userInBot?.chatId) {
+              agentChatId = userInBot.chatId;
+              // נעדכן את ה-User המקורי עם ה-chatId שמצאנו
+              await this.userRepository.updateUser(owner.id, { chatId: agentChatId });
             }
-          );
+          }
+
+          if (!agentChatId) {
+            console.warn(`⚠️ Warning: Owner ${owner?.name || apartment.userId} has no Telegram chatId linked.`);
+            await ctx.reply(`שים לב: המפרסם (${owner?.name || 'בעל הנכס'}) עדיין לא חיבר את הבוט שלו. בקשתך נרשמה במערכת, אך מומלץ ליצור איתו קשר גם טלפונית: ${apartment.contactPhone || 'לא צוין'}`);
+            return await this.sendApartmentMenu(ctx, apartment);
+          }
+
+          const callbackData = `confirm_v_${lead.id}_${Math.floor(selectedDate.getTime() / 1000)}`;
+
+          try {
+            await this.bot.telegram.sendMessage(
+              agentChatId,
+              `🔔 **בקשה לסיור חדש!**\n\n` +
+                `דירה: ${apartment.city}, ${apartment.address || ''}\n` +
+                `לקוח: ${ctx.from.first_name} (${chatId})\n` +
+                `מועד מבוקש: ${dateStr} בשעה ${timeStr}\n\n` +
+                `לחץ על הכפתור למטה כדי לאשר לו.`,
+              {
+                reply_markup: {
+                  inline_keyboard: [
+                    [
+                      {
+                        text: "✅ אשר הגעה",
+                        callback_data: callbackData,
+                      },
+                    ],
+                  ],
+                },
+              }
+            );
+          } catch (err) {
+            console.error(`Failed to send message to agentChatId ${agentChatId}:`, err);
+            await ctx.reply(`חלה שגיאה טכנית בשליחת ההודעה למפרסם. נא נסה שוב מאוחר יותר.`);
+          }
 
           return await this.sendApartmentMenu(ctx, apartment);
         }
       }
 
       // אישור הגעה מצד המתווך/משכיר ללקוח
-      if (data.startsWith("confirm_visit_")) {
+      if (data.startsWith("confirm_v_")) {
         const parts = data.split("_");
-        const tenantChatId = parts[2];
-        const dateRaw = parts[3];
+        const leadId = parts[2];
+        const timestamp = parseInt(parts[3]) * 1000;
 
-        // 1. השגת נתונים מה-DB
-        const tenantUser = await this.userRepository.getOrCreateUser(
-          tenantChatId
-        );
-        const user = await this.userRepository.getOrCreateUser(chatId); // המתווך שלחץ על הכפתור
-        const lastApartmentId = (user.metadata as any)?.last_published_id;
-        const apartment = (await this.apartmentRepository.getById(
-          lastApartmentId
-        )) as any;
+        const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
+        const lead = await leadRepo.findById(leadId);
 
-        const confirmedDate = new Date(dateRaw);
+        if (!lead || !lead.apartment) {
+          return ctx.reply("שגיאה: הליד או הדירה לא נמצאו.");
+        }
+
+        const apartment = lead.apartment;
+        const tenantChatId = lead.tenantChatId;
+        const tenantUser = await this.userRepository.getOrCreateUser(tenantChatId);
+        const agentUser = await this.userRepository.getOrCreateUser(chatId);
+
+        const confirmedDate = new Date(timestamp);
         const endDate = new Date(confirmedDate.getTime() + 30 * 60000); // פגישה של 30 דקות
         const timeStr = confirmedDate.toLocaleTimeString("he-IL", {
           hour: "2-digit",
@@ -251,10 +281,22 @@ export class TelegramService implements IMessagingService {
 
         try {
           // 2. יצירת פגישה בקלנדר לשני הצדדים
-          // הערה: וודא שלמשתמשים יש שדה email ב-DB
           const emails: string[] = [];
-          if (user.email) emails.push(user.email);
+          if (agentUser.email) emails.push(agentUser.email);
           if (tenantUser.email) emails.push(tenantUser.email);
+
+          // עדכון סטטוס הליד
+          await leadRepo.updateStatus(lead.id, "VIEWING_SCHEDULED");
+          
+          // שמירת הפגישה ב-DB
+          await this.prisma.meeting.create({
+              data: {
+                  leadId: lead.id,
+                  startTime: confirmedDate,
+                  endTime: endDate,
+                  location: apartment.city + (apartment.address ? `, ${apartment.address}` : '')
+              }
+          });
 
           if (emails.length > 0) {
             await this.calendarService.createMeeting(
@@ -267,26 +309,9 @@ export class TelegramService implements IMessagingService {
               emails
             );
 
-            // עדכון סטטוס הליד ושמירת פגישה
-            const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
-            const lead = await leadRepo.getOrCreateLead(apartment.id, tenantChatId);
-            await leadRepo.updateStatus(lead.id, "VIEWING_SCHEDULED");
-            
-            // שמירת הפגישה ב-DB
-            await this.prisma.meeting.create({
-                data: {
-                    leadId: lead.id,
-                    startTime: confirmedDate,
-                    endTime: endDate,
-                    location: apartment.city
-                }
-            });
-
-            // 3. שליחת התראת אימייל נוספת (אופציונלי - הקלנדר כבר שולח)
-            if (user.email) {
+            if (agentUser.email) {
               await this.calendarService.sendEmailNotification(emails, {
                 city: apartment.city,
-                // tenantName: tenantUser.name || "שוכר",
                 apartment: apartment,
                 start: confirmedDate,
               });
@@ -297,10 +322,8 @@ export class TelegramService implements IMessagingService {
           await this.bot.telegram.sendMessage(
             tenantChatId,
             `🎉 **המפרסם אישר את הגעתך!**\n` +
-              `נפגש בכתובת הנכס בשעה ${timeStr}.\n` +
-              `זימון נשלח ליומן שלך (במייל: ${
-                tenantUser.email || "לא מעודכן"
-              }).`
+              `נפגש בכתובת הנכס (${apartment.city}, ${apartment.address || ''}) בשעה ${timeStr}.\n` +
+              `זימון נשלח ליומן שלך ${tenantUser.email ? `(במייל: ${tenantUser.email})` : '(אם הגדרת מייל באפליקציה)'}.`
           );
 
           await ctx.reply("אישרת את הסיור! הפגישה נוספה ליומן שלכם. ✅");
