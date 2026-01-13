@@ -1,0 +1,23 @@
+<div class="analytics-container">
+  <div class="header-section">
+    <h1>ניתוח נתונים וביצועים</h1>
+    <p>תצוגה גרפית של המדדים המרכזיים במערכת</p>
+  </div>
+
+  <div class="charts-grid" *ngIf="isBrowser">
+    <mat-card *ngFor="let options of chartOptions" class="chart-card">
+      <mat-card-content>
+        <highcharts-chart 
+          [Highcharts]="Highcharts" 
+          [options]="options"
+          style="width: 100%; height: 300px; display: block;">
+        </highcharts-chart>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="loading-placeholder" *ngIf="!isBrowser">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>טוען נתונים...</p>
+  </div>
+</div>
