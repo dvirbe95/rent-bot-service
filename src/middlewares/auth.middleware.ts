@@ -1,5 +1,5 @@
 // src/modules/bot/auth.middleware.ts
-import { Role } from "@prisma/client";
+import { UserRole } from "@prisma/client";
 import { BotResponse } from "../common/interfaces/messaging.interface";
 
 export class AuthMiddleware {
@@ -7,7 +7,7 @@ export class AuthMiddleware {
         const now = new Date();
         
         // 1. רולים שחייבים אימות גוגל (JWT) פעם ב-30 יום
-        const professionalRoles = [Role.AGENT, Role.LANDLORD, Role.SELLER];
+        const professionalRoles = [UserRole.AGENT, UserRole.LANDLORD, UserRole.SELLER];
         if (professionalRoles.includes(user.role)) {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -24,7 +24,7 @@ export class AuthMiddleware {
         }
 
         // 2. בדיקת מנוי (ספציפית למתווכים בלבד - AGENT)
-        if (user.role === Role.AGENT) {
+        if (user.role === UserRole.AGENT) {
             const isExpired = user.planExpiresAt ? now > new Date(user.planExpiresAt) : true;
             if (!user.subscriptionStatus || isExpired) {
                 return {

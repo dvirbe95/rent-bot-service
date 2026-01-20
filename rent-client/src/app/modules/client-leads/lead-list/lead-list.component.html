@@ -3,49 +3,138 @@
     <h1>ניהול לידים ולקוחות</h1>
   </div>
 
-  <mat-card *ngIf="!loading">
-    <table mat-table [dataSource]="leads" class="full-width">
-      <ng-container matColumnDef="tenantName">
-        <th mat-header-cell *matHeaderCellDef> שם הלקוח </th>
-        <td mat-cell *matCellDef="let element"> {{element.tenantName || 'אנונימי'}} </td>
-      </ng-container>
+  <div class="filters-container">
+    <mat-form-field appearance="outline">
+      <mat-label>חיפוש חופשי (שם, טלפון...)</mat-label>
+      <input matInput [formControl]="searchControl">
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
 
-      <ng-container matColumnDef="apartment">
-        <th mat-header-cell *matHeaderCellDef> נכס </th>
-        <td mat-cell *matCellDef="let element"> {{element.apartment?.city}} </td>
-      </ng-container>
+    <div class="select-filters">
+      <mat-form-field appearance="outline">
+        <mat-label>סטטוס</mat-label>
+        <mat-select [formControl]="statusControl">
+          <mat-option value="">הכל</mat-option>
+          <mat-option value="NEW">חדש</mat-option>
+          <mat-option value="INTERESTED">מתעניין</mat-option>
+          <mat-option value="VIEWING_SCHEDULED">נקבעה פגישה</mat-option>
+          <mat-option value="DEAL_CLOSED">סגור (עסקה)</mat-option>
+          <mat-option value="LOST">לא רלוונטי</mat-option>
+        </mat-select>
+      </mat-form-field>
 
-      <ng-container matColumnDef="status">
-        <th mat-header-cell *matHeaderCellDef> סטטוס </th>
-        <td mat-cell *matCellDef="let element">
-          <mat-chip-listbox>
-            <mat-chip [color]="element.status === 'NEW' ? 'accent' : ''" selected>
+      <mat-form-field appearance="outline">
+        <mat-label>לפי נכס</mat-label>
+        <mat-select [formControl]="apartmentControl">
+          <mat-option value="">כל הנכסים</mat-option>
+          <mat-option *ngFor="let apt of apartments" [value]="apt.id">
+            {{apt.city}}, {{apt.address}}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- תצוגת טבלה למחשב -->
+    <mat-card class="table-card" *ngIf="(isHandset$ | async) === false">
+      <table mat-table [dataSource]="leads" class="full-width">
+        <ng-container matColumnDef="tenantName">
+          <th mat-header-cell *matHeaderCellDef> שם הלקוח </th>
+          <td mat-cell *matCellDef="let element"> {{element.tenantName || 'אנונימי'}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="contact">
+          <th mat-header-cell *matHeaderCellDef> פרטי קשר </th>
+          <td mat-cell *matCellDef="let element"> 
+            <div>{{element.tenantPhone || '-'}}</div>
+            <small>{{element.tenantEmail}}</small>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="apartment">
+          <th mat-header-cell *matHeaderCellDef> נכס </th>
+          <td mat-cell *matCellDef="let element"> {{element.apartment?.city}}, {{element.apartment?.address}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> סטטוס </th>
+          <td mat-cell *matCellDef="let element">
+            <span class="status-badge" [attr.data-status]="element.status">
               {{getStatusLabel(element.status)}}
-            </mat-chip>
-          </mat-chip-listbox>
-        </td>
-      </ng-container>
+            </span>
+          </td>
+        </ng-container>
 
-      <ng-container matColumnDef="lastMessageAt">
-        <th mat-header-cell *matHeaderCellDef> הודעה אחרונה </th>
-        <td mat-cell *matCellDef="let element"> {{element.lastMessageAt | date:'dd/MM/yy HH:mm'}} </td>
-      </ng-container>
+        <ng-container matColumnDef="lastMessageAt">
+          <th mat-header-cell *matHeaderCellDef> הודעה אחרונה </th>
+          <td mat-cell *matCellDef="let element"> {{element.lastMessageAt | date:'dd/MM/yy HH:mm'}} </td>
+        </ng-container>
 
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef> פעולות </th>
-        <td mat-cell *matCellDef="let element">
-          <button mat-icon-button color="primary" [routerLink]="[element.id]">
-            <mat-icon>visibility</mat-icon>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> פעולות </th>
+          <td mat-cell *matCellDef="let element">
+            <button mat-icon-button color="primary" [routerLink]="[element.id]" matTooltip="פרטי שיחה">
+              <mat-icon>visibility</mat-icon>
+            </button>
+            <a mat-icon-button color="accent" [href]="'tel:' + element.tenantPhone" *ngIf="element.tenantPhone" matTooltip="התקשר ללקוח">
+              <mat-icon>phone</mat-icon>
+            </a>
+            <button mat-icon-button color="warn" (click)="openWaze(element.apartment?.address)" *ngIf="element.apartment?.address" matTooltip="ניווט לנכס">
+              <mat-icon>directions_car</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card>
+
+    <!-- תצוגת כרטיסיות למובייל -->
+    <div class="mobile-cards" *ngIf="isHandset$ | async">
+      <mat-card class="lead-card" *ngFor="let lead of leads" [routerLink]="[lead.id]">
+        <mat-card-header>
+          <mat-card-title>{{lead.tenantName || 'אנונימי'}}</mat-card-title>
+          <mat-card-subtitle>
+            {{lead.apartment?.city}}, {{lead.apartment?.address}}
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="lead-info">
+            <div class="info-row">
+              <span class="status-badge" [attr.data-status]="lead.status">
+                {{getStatusLabel(lead.status)}}
+              </span>
+              <span class="date">{{lead.lastMessageAt | date:'dd/MM/yy HH:mm'}}</span>
+            </div>
+            <div class="contact-row" *ngIf="lead.tenantPhone">
+              <mat-icon>phone</mat-icon>
+              <span>{{lead.tenantPhone}}</span>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions align="end" (click)="$event.stopPropagation()">
+          <a mat-icon-button color="accent" [href]="'tel:' + lead.tenantPhone" *ngIf="lead.tenantPhone">
+            <mat-icon>phone</mat-icon>
+          </a>
+          <button mat-icon-button color="warn" (click)="openWaze(lead.apartment?.address)" *ngIf="lead.apartment?.address">
+            <mat-icon>directions_car</mat-icon>
           </button>
-        </td>
-      </ng-container>
+          <button mat-icon-button color="primary" [routerLink]="[lead.id]">
+            <mat-icon>chevron_left</mat-icon>
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-  </mat-card>
+    <div class="empty-state" *ngIf="leads.length === 0">
+      <mat-icon>people_outline</mat-icon>
+      <p>לא נמצאו לידים העונים לסינון.</p>
+    </div>
+  </div>
 
   <div class="loading" *ngIf="loading">
-    <mat-spinner></mat-spinner>
+    <mat-spinner diameter="50"></mat-spinner>
   </div>
 </div>

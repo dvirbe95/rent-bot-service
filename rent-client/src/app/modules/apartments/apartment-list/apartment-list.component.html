@@ -1,46 +1,96 @@
 <div class="container">
   <div class="header">
     <h1>הנכסים שלי</h1>
-    <button mat-raised-button color="primary" routerLink="create">
-      <mat-icon>add</mat-icon> נכס חדש
-    </button>
+    <div class="actions">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>חיפוש חופשי (עיר, כתובת...)</mat-label>
+        <input matInput [formControl]="searchControl">
+        <mat-icon matSuffix>search</mat-icon>
+      </mat-form-field>
+      <button mat-raised-button color="primary" routerLink="create" class="add-btn">
+        <mat-icon>add</mat-icon> <span class="btn-text">נכס חדש</span>
+      </button>
+    </div>
   </div>
 
-  <mat-card *ngIf="!loading">
-    <table mat-table [dataSource]="apartments" class="full-width">
-      <ng-container matColumnDef="city">
-        <th mat-header-cell *matHeaderCellDef> עיר </th>
-        <td mat-cell *matCellDef="let element"> {{element.city}} </td>
-      </ng-container>
+  <div *ngIf="!loading">
+    <!-- תצוגת טבלה למחשב -->
+    <mat-card class="table-card" *ngIf="(isHandset$ | async) === false">
+      <table mat-table [dataSource]="apartments" class="full-width">
+        <ng-container matColumnDef="city">
+          <th mat-header-cell *matHeaderCellDef> עיר </th>
+          <td mat-cell *matCellDef="let element"> {{element.city}} </td>
+        </ng-container>
 
-      <ng-container matColumnDef="price">
-        <th mat-header-cell *matHeaderCellDef> מחיר </th>
-        <td mat-cell *matCellDef="let element"> {{element.price | number}} ₪ </td>
-      </ng-container>
+        <ng-container matColumnDef="address">
+          <th mat-header-cell *matHeaderCellDef> כתובת </th>
+          <td mat-cell *matCellDef="let element"> {{element.address || '-'}} </td>
+        </ng-container>
 
-      <ng-container matColumnDef="rooms">
-        <th mat-header-cell *matHeaderCellDef> חדרים </th>
-        <td mat-cell *matCellDef="let element"> {{element.rooms}} </td>
-      </ng-container>
+        <ng-container matColumnDef="price">
+          <th mat-header-cell *matHeaderCellDef> מחיר </th>
+          <td mat-cell *matCellDef="let element"> {{element.price | number}} ₪ </td>
+        </ng-container>
 
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef> פעולות </th>
-        <td mat-cell *matCellDef="let element">
-          <button mat-icon-button color="primary" [routerLink]="['edit', element.id]">
-            <mat-icon>edit</mat-icon>
+        <ng-container matColumnDef="rooms">
+          <th mat-header-cell *matHeaderCellDef> חדרים </th>
+          <td mat-cell *matCellDef="let element"> {{element.rooms}} </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> פעולות </th>
+          <td mat-cell *matCellDef="let element">
+            <button mat-icon-button color="primary" [routerLink]="['edit', element.id]" matTooltip="ערוך נכס">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button color="warn" (click)="deleteApartment(element.id)" matTooltip="מחק נכס">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card>
+
+    <!-- תצוגת כרטיסיות למובייל -->
+    <div class="mobile-cards" *ngIf="isHandset$ | async">
+      <mat-card class="apartment-card" *ngFor="let apt of apartments">
+        <mat-card-header>
+          <mat-card-title>{{apt.city}}</mat-card-title>
+          <mat-card-subtitle>{{apt.address}}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="apt-details">
+            <div class="detail-item">
+              <mat-icon>payments</mat-icon>
+              <span>{{apt.price | number}} ₪</span>
+            </div>
+            <div class="detail-item">
+              <mat-icon>meeting_room</mat-icon>
+              <span>{{apt.rooms}} חדרים</span>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button color="primary" [routerLink]="['edit', apt.id]">
+            <mat-icon>edit</mat-icon> ערוך
           </button>
-          <button mat-icon-button color="warn" (click)="deleteApartment(element.id)">
-            <mat-icon>delete</mat-icon>
+          <button mat-button color="warn" (click)="deleteApartment(apt.id)">
+            <mat-icon>delete</mat-icon> מחק
           </button>
-        </td>
-      </ng-container>
+        </mat-card-actions>
+      </mat-card>
+    </div>
 
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-    </table>
-  </mat-card>
+    <div class="empty-state" *ngIf="apartments.length === 0">
+      <mat-icon>info_outline</mat-icon>
+      <p>לא נמצאו נכסים העונים לחיפוש שלך.</p>
+    </div>
+  </div>
 
   <div class="loading" *ngIf="loading">
-    <mat-spinner></mat-spinner>
+    <mat-spinner diameter="50"></mat-spinner>
   </div>
 </div>

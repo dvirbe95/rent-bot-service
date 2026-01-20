@@ -1,7 +1,7 @@
 // src/modules/bot/flows/bot/landlord.flow.ts
 import { BaseFlow } from './base.flow';
 import { BotResponse } from "../../../../common/interfaces/messaging.interface";
-import { Role } from '@prisma/client';
+import { UserRole } from '@prisma/client';
 
 export class LandlordFlow extends BaseFlow {
     async handle(chatId: string, text: string, user: any, userName: string): Promise<BotResponse> {
@@ -9,7 +9,7 @@ export class LandlordFlow extends BaseFlow {
         const lastApartmentId = user.metadata?.last_published_id;
 
         // 1. עדכון זמינות (רלוונטי רק למשכירים ומתווכים)
-        if (user.role !== Role.SELLER && lastApartmentId && (cleanText.includes("פנוי") || cleanText.includes("זמינות"))) {
+        if (user.role !== UserRole.SELLER && lastApartmentId && (cleanText.includes("פנוי") || cleanText.includes("זמינות"))) {
             const slots = await this.ragService.extractAvailability(text);
             await this.apartmentRepo.updateApartment(lastApartmentId, { availability: slots });
             return { text: "מעולה! הגדרתי את מועדי הביקור. שוכרים יכולים לתאם כעת. 📅" };
@@ -24,13 +24,13 @@ export class LandlordFlow extends BaseFlow {
                     const details = await this.ragService.extractApartmentDetails(text);
                     if (details?.city) {
                         await this.userRepo.updateStep(chatId, 'CONFIRM_DETAILS', details);
-                        const msg = user.role === Role.SELLER ? "דירה למכירה" : "דירה להשכרה";
+                        const msg = user.role === UserRole.SELLER ? "דירה למכירה" : "דירה להשכרה";
                         return { 
                             text: `זיהיתי ${msg} ב-${details.city}:\n💰 מחיר: ${details.price}\n🏠 חדרים: ${details.rooms}\n\n📸 שלח תמונות עכשיו, ובסיום כתוב "כן" לאישור.`,
                         };
                     }
                 }
-                const welcomeLabel = user.role === Role.AGENT ? "הסוכן" : "המשתמש";
+                const welcomeLabel = user.role === UserRole.AGENT ? "הסוכן" : "המשתמש";
                 return { text: `היי ${userName}! שלח לי תיאור נכס חדש לפרסום או עדכן פרטים על נכס קיים.` };
         }
     }
@@ -68,9 +68,8 @@ export class LandlordFlow extends BaseFlow {
         const newApartment = await this.apartmentRepo.createApartment({
             ...details,
             images: media.filter((m: any) => m.type === 'image').map((m: any) => m.fileId),
-            videos: media.filter((m: any) => m.type === 'video').map((m: any) => m.fileId),
-            phone_number: chatId,
-            ownerId: user.id
+            video_url: media.find((m: any) => m.type === 'video')?.fileId || null,
+            userId: user.id
         }, embedding);
 
         await this.userRepo.updateStep(chatId, 'START', { last_published_id: newApartment.id });

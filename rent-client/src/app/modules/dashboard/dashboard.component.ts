@@ -14,15 +14,28 @@ export class DashboardComponent implements OnInit {
   leadsCount: number = 0;
   newLeadsCount: number = 0;
   loading: boolean = true;
+  userRole: string = '';
 
   constructor(
     private apartmentService: ApartmentService,
     private clientLeadService: ClientLeadService,
-    private authService: AuthService,
+    public authService: AuthService,
     private router: Router
-  ) {}
+  ) {
+    this.userRole = this.authService.currentUserValue?.role;
+  }
 
   ngOnInit() {
+    if (this.userRole === 'ADMIN') {
+      this.router.navigate(['/admin']);
+      return;
+    }
+
+    if (this.userRole === 'TENANT') {
+      this.loading = false;
+      return;
+    }
+
     this.loadDashboardData();
   }
 
@@ -57,7 +70,6 @@ export class DashboardComponent implements OnInit {
   }
 
   checkLoading() {
-    // פשוט נסיים את הטעינה לאחר שני הקריאות
     this.loading = false;
   }
 

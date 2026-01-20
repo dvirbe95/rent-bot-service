@@ -41,4 +41,21 @@ export class LeadDetailComponent implements OnInit {
       this.messageForm.reset();
     });
   }
+
+  openWaze(address: string) {
+    if (!address) return;
+    const url = `https://waze.com/ul?q=${encodeURIComponent(address)}`;
+    window.open(url, '_blank');
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: any = {
+      'NEW': 'חדש',
+      'INTERESTED': 'מתעניין',
+      'VIEWING_SCHEDULED': 'נקבעה פגישה',
+      'DEAL_CLOSED': 'סגור (עסקה)',
+      'LOST': 'לא רלוונטי'
+    };
+    return labels[status] || status;
+  }
 }

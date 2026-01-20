@@ -8,8 +8,7 @@ import { RegisterComponent } from './modules/auth/register/register.component';
 const routes: Routes = [
   { 
     path: '', 
-    redirectTo: '/dashboard', 
-    pathMatch: 'full' 
+    loadChildren: () => import('./modules/landing/landing.module').then(m => m.LandingModule)
   },
   { 
     path: 'login', 
@@ -19,10 +18,20 @@ const routes: Routes = [
     path: 'register', 
     component: RegisterComponent
   },
+  {
+    path: 'p',
+    loadChildren: () => import('./modules/public/public.module').then(m => m.PublicModule)
+  },
   { 
     path: 'dashboard', 
     canActivate: [AuthGuard],
     loadChildren: () => import('./modules/dashboard/dashboard.module').then(m => m.DashboardModule)
+  },
+  { 
+    path: 'admin', 
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['ADMIN'] },
+    loadChildren: () => import('./modules/admin/admin.module').then(m => m.AdminModule)
   },
   { 
     path: 'apartments', 
@@ -41,6 +50,12 @@ const routes: Routes = [
     canActivate: [AuthGuard, RoleGuard],
     data: { roles: ['AGENT', 'LANDLORD', 'SELLER'] },
     loadChildren: () => import('./modules/posts/posts.module').then(m => m.PostsModule)
+  },
+  { 
+    path: 'meetings', 
+    canActivate: [AuthGuard, RoleGuard],
+    data: { roles: ['AGENT', 'LANDLORD', 'SELLER'] },
+    loadChildren: () => import('./modules/meetings/meetings.module').then(m => m.MeetingsModule)
   }
 ];
 

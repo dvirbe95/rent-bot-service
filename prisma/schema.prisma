@@ -1,57 +1,187 @@
+// This is your Prisma schema file
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  chatId          String?  @unique
+  name            String?
+  phone           String?  @unique
+  email           String?  @unique
+  password        String?
+  role            UserRole @default(USER)
+  apartments      Apartment[]
+  posts           Post[]
+  metadata        Json?
+  current_step    String?  @default("START")
+  subscriptionStatus Boolean @default(false)
+  planExpiresAt   DateTime?
+  lastLogin       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("users")
 }
 
 model Apartment {
-  id           String  @id @default(uuid())
-  city         String
-  price        Float
-  rooms        Float
-  description  String?
-  address      String?
-  phone_number String // מספר המשכיר/מתווך
-  availability Json?
-
-  // שדות חדשים למדיה ויומן
-  images        String[] // מערך של URLS
-  video_url     String? // לינק לסרטון אחד מרכזי
-  calendar_link String? // לינק ל-Cal.com או Google Calendar
-
-  embedding Unsupported("vector(768)")?
-  createdAt DateTime                    @default(now())
-  User      User?                       @relation(fields: [userId], references: [id])
-  userId    String?
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  
+  // פרטי בסיס
+  city            String
+  address         String?
+  price           Float
+  rooms           Float
+  floor           Int?
+  sqm             Int?
+  
+  // פרטים פיננסיים ל-AI
+  arnona          Float?
+  vaadBayit       Float?
+  collateral      String?  // ערבונות
+  priceFlexibility Boolean @default(false)
+  
+  // מאפייני נכס
+  description     String?
+  entryDate       DateTime?
+  balcony         Boolean @default(false)
+  shelter         Boolean @default(false) // מקלט
+  mamad           Boolean @default(false) // ממ"ד
+  furnished       Boolean @default(false)
+  petsAllowed     Boolean @default(true)
+  parking         Boolean @default(false)
+  elevator        Boolean @default(false)
+  
+  // סביבה (ל-AI)
+  nearbyConstruction Boolean @default(false)
+  neighbors       String?
+  commercialCenter String?
+  schools         String?
+  entertainmentAreas String?
+  
+  // יצירת קשר וניהול
+  contactPhone    String?
+  availability    Json?    // מערך של טווחי זמנים לביקורים
+  
+  // מדיה ומסמכים
+  images          String[]
+  video_url       String?
+  documents       String[] // לינקים למסמכים (חוזה, טיוטה וכו')
+  
+  // נתוני מיקום והעשרה ממשלתית
+  lat             Float?
+  lng             Float?
+  neighborhoodData Json?    // מידע על תחבורה, חינוך וכו' מ-data.gov.il
+  
+  embeddings      Float[]
+  clientLeads     ClientLead[]
+  posts           Post[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("apartments")
 }
 
-model User {
-  id                 String      @id @default(cuid())
-  phone              String      @unique // Telegram Chat ID
-  email              String?     @unique 
-  password           String?     // מוצפן - חובה להרשמה מהאפליקציה
-  name               String?     // שם מלא
-  role               Role        @default(TENANT)
-  current_step       String      @default("START")
-  metadata           Json? 
-  subscriptionStatus Boolean     @default(false)
-  planExpiresAt      DateTime?
-  lastLogin          DateTime?   @default(now())
-  apartments         Apartment[]
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+model ClientLead {
+  id              String   @id @default(uuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  tenantChatId    String
+  tenantName      String?
+  tenantPhone     String?
+  tenantEmail     String?
+  status          LeadStatus @default(NEW)
+  lastMessageAt   DateTime @default(now())
+  messages        LeadMessage[]
+  meetings        Meeting[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([apartmentId])
+  @@index([tenantChatId])
+  @@map("client_leads")
 }
 
-enum Role {
-  TENANT    // שוכר
-  BUYER     // קונה
-  LANDLORD  // משכיר (פרטי)
-  SELLER    // מוכר (פרטי)
-  AGENT     // מתווך (מקצועי)
+model LeadMessage {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  senderType  SenderType
+  content     String
+  timestamp   DateTime @default(now())
+  @@index([leadId])
+  @@map("lead_messages")
+}
+
+model Meeting {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        ClientLead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  startTime   DateTime
+  endTime     DateTime
+  location    String?
+  status      MeetingStatus @default(SCHEDULED)
+  createdAt   DateTime @default(now())
+  @@index([leadId])
+  @@map("meetings")
+}
+
+model Post {
+  id              String   @id @default(uuid())
+  apartmentId     String
+  apartment       Apartment @relation(fields: [apartmentId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  content         String
+  platform        PostPlatform
+  publishedAt     DateTime?
+  createdAt       DateTime @default(now())
+  @@index([apartmentId])
+  @@index([userId])
+  @@map("posts")
+}
+
+enum UserRole {
+  USER
+  AGENT
+  ADMIN
+  TENANT
+  LANDLORD
+  SELLER
+}
+
+enum LeadStatus {
+  NEW
+  INTERESTED
+  VIEWING_SCHEDULED
+  DEAL_CLOSED
+  LOST
+}
+
+enum SenderType {
+  TENANT
+  BOT
+  AGENT
+}
+
+enum PostPlatform {
+  TELEGRAM
+  FACEBOOK
+  WHATSAPP
+  INSTAGRAM
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
 }

@@ -1,0 +1,139 @@
+<div class="container">
+  <div class="header">
+    <h1>יומן פגישות</h1>
+  </div>
+
+  <div *ngIf="!loading">
+    <!-- תצוגת טבלה למחשב -->
+    <mat-card class="table-card" *ngIf="(isHandset$ | async) === false">
+      <table mat-table [dataSource]="meetings" class="full-width">
+        <ng-container matColumnDef="time">
+          <th mat-header-cell *matHeaderCellDef> מתי </th>
+          <td mat-cell *matCellDef="let element"> 
+            <div class="meeting-date">{{element.startTime | date:'dd/MM/yyyy'}}</div>
+            <div class="meeting-time">{{element.startTime | date:'HH:mm'}} - {{element.endTime | date:'HH:mm'}}</div>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="tenant">
+          <th mat-header-cell *matHeaderCellDef> לקוח </th>
+          <td mat-cell *matCellDef="let element"> 
+            <div class="tenant-name">{{element.lead?.tenantName || 'לקוח אנונימי'}}</div>
+            <a [href]="'tel:' + element.lead.tenantPhone" class="phone-link" *ngIf="element.lead?.tenantPhone">
+              <mat-icon>phone</mat-icon> {{element.lead.tenantPhone}}
+            </a>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="apartment">
+          <th mat-header-cell *matHeaderCellDef> נכס </th>
+          <td mat-cell *matCellDef="let element"> 
+            {{element.lead?.apartment?.city}}, {{element.lead?.apartment?.address}}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="location">
+          <th mat-header-cell *matHeaderCellDef> ניווט </th>
+          <td mat-cell *matCellDef="let element"> 
+            <button mat-icon-button color="accent" (click)="openWaze(element.lead?.apartment?.address)" *ngIf="element.lead?.apartment?.address">
+              <mat-icon>directions_car</mat-icon>
+            </button>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> סטטוס </th>
+          <td mat-cell *matCellDef="let element">
+            <span class="status-badge" [attr.data-status]="element.status">
+              {{getStatusLabel(element.status)}}
+            </span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> פעולות </th>
+          <td mat-cell *matCellDef="let element">
+            <button mat-icon-button [matMenuTriggerFor]="menu">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #menu="matMenu">
+              <button mat-menu-item (click)="updateStatus(element.id, 'COMPLETED')" *ngIf="element.status === 'SCHEDULED'">
+                <mat-icon>check_circle</mat-icon>
+                <span>סמן כבוצעה</span>
+              </button>
+              <button mat-menu-item (click)="updateStatus(element.id, 'CANCELLED')" *ngIf="element.status === 'SCHEDULED'">
+                <mat-icon>cancel</mat-icon>
+                <span>בטל פגישה</span>
+              </button>
+              <button mat-menu-item (click)="deleteMeeting(element.id)">
+                <mat-icon>delete</mat-icon>
+                <span>מחק לצמיתות</span>
+              </button>
+            </mat-menu>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+    </mat-card>
+
+    <!-- תצוגת כרטיסיות למובייל -->
+    <div class="mobile-cards" *ngIf="isHandset$ | async">
+      <mat-card class="meeting-card" *ngFor="let meeting of meetings">
+        <mat-card-header>
+          <div mat-card-avatar class="status-indicator" [attr.data-status]="meeting.status"></div>
+          <mat-card-title>{{meeting.lead?.tenantName || 'לקוח אנונימי'}}</mat-card-title>
+          <mat-card-subtitle>{{meeting.lead?.apartment?.city}}, {{meeting.lead?.apartment?.address}}</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="meeting-info-grid">
+            <div class="info-item">
+              <mat-icon>calendar_today</mat-icon>
+              <span>{{meeting.startTime | date:'dd/MM/yyyy'}}</span>
+            </div>
+            <div class="info-item">
+              <mat-icon>access_time</mat-icon>
+              <span>{{meeting.startTime | date:'HH:mm'}} - {{meeting.endTime | date:'HH:mm'}}</span>
+            </div>
+            <div class="info-item" *ngIf="meeting.lead?.tenantPhone">
+              <mat-icon>phone</mat-icon>
+              <a [href]="'tel:' + meeting.lead.tenantPhone">{{meeting.lead.tenantPhone}}</a>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-icon-button color="accent" (click)="openWaze(meeting.lead?.apartment?.address)" *ngIf="meeting.lead?.apartment?.address">
+            <mat-icon>directions_car</mat-icon>
+          </button>
+          <button mat-icon-button [matMenuTriggerFor]="cardMenu">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #cardMenu="matMenu">
+            <button mat-menu-item (click)="updateStatus(meeting.id, 'COMPLETED')" *ngIf="meeting.status === 'SCHEDULED'">
+              <mat-icon>check_circle</mat-icon>
+              <span>סמן כבוצעה</span>
+            </button>
+            <button mat-menu-item (click)="updateStatus(meeting.id, 'CANCELLED')" *ngIf="meeting.status === 'SCHEDULED'">
+              <mat-icon>cancel</mat-icon>
+              <span>בטל פגישה</span>
+            </button>
+            <button mat-menu-item (click)="deleteMeeting(meeting.id)">
+              <mat-icon>delete</mat-icon>
+              <span>מחק</span>
+            </button>
+          </mat-menu>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+
+    <div class="empty-state" *ngIf="meetings.length === 0">
+      <mat-icon>event_busy</mat-icon>
+      <p>אין פגישות מתוזמנות ביומן</p>
+    </div>
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    <mat-spinner diameter="50"></mat-spinner>
+  </div>
+</div>
