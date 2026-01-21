@@ -13,6 +13,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 export class ApartmentCreateComponent implements OnInit {
   apartmentForm!: FormGroup;
   isEdit = false;
+  isView = false;
   id?: string;
   loading = false;
   uploading = false;
@@ -75,8 +76,11 @@ export class ApartmentCreateComponent implements OnInit {
     });
 
     this.id = this.route.snapshot.params['id'];
+    const url = this.route.snapshot.url.join('/');
+    this.isView = url.includes('view');
+    
     if (this.id) {
-      this.isEdit = true;
+      this.isEdit = !this.isView;
       this.loadApartment();
     }
   }
@@ -88,6 +92,10 @@ export class ApartmentCreateComponent implements OnInit {
       this.images = apt.images || [];
       this.documents = apt.documents || [];
       this.availabilitySlots = apt.availability || [];
+      
+      if (this.isView) {
+        this.apartmentForm.disable();
+      }
     });
   }
 

@@ -4,6 +4,7 @@ import { FormControl } from '@angular/forms';
 import { debounceTime, distinctUntilChanged, map, shareReplay } from 'rxjs/operators';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Observable } from 'rxjs';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-apartment-list',
@@ -58,6 +59,11 @@ export class ApartmentListComponent implements OnInit {
     if (confirm('האם אתה בטוח שברצונך למחוק נכס זה?')) {
       this.apartmentService.delete(id).subscribe(() => this.loadApartments());
     }
+  }
+
+  viewPublicProfile(apartmentId: string) {
+    const publicUrl = `${environment.frontendUrl}/p/${apartmentId}`;
+    window.open(publicUrl, '_blank');
   }
 
   applyFilters(newFilters: ApartmentFilters) {
