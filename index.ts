@@ -54,17 +54,16 @@ async function main() {
     app.use(express.static(frontendPath));
 
     // תמיכה ב-Client-side routing של אנגולר - כל נתיב שלא מוכר כ-API יחזיר את ה-index.html
-    app.get('*', (req, res) => {
+    app.get('.*', (req, res) => {
         if (!req.path.startsWith('/api')) {
             res.sendFile(path.join(frontendPath, 'index.html'));
         }
     });
 
-    const PORT = process.env.PORT || 3000;
-    app.listen(PORT, () => {
-        console.log(`🌐 API Server is running on http://localhost:${PORT}`);
+    const PORT = Number(process.env.PORT) || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server is running on port ${PORT}`);
     });
-
     try {
         // אתחול הבוט (Launch)
         await telegramBot.init();
