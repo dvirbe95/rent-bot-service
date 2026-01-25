@@ -141,9 +141,10 @@ export class TelegramService implements IMessagingService {
       // -------------------------
 
       if (response.action === 'REQUIRE_AUTH') {
+          const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
           return ctx.reply(response.text, {
               reply_markup: {
-                  inline_keyboard: [[{ text: "🔑 כניסה לאפליקציה", url: "https://your-app.com" }]]
+                  inline_keyboard: [[{ text: "🔑 כניסה לאפליקציה", url: frontendUrl }]]
               }
           });
       }
@@ -530,6 +531,7 @@ const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה �
       console.log(`📡 Webhook set to: ${domain}${webhookPath}`);
     } else {
       // עבודה ב-Polling לסביבת פיתוח מקומית
+      await this.bot.telegram.deleteWebhook(); // מחיקת Webhook ישן כדי למנוע קונפליקט
       this.bot.launch();
       console.log("🤖 Bot started in Polling mode (Local)");
     }

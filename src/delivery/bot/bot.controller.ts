@@ -65,10 +65,12 @@ export class BotController {
             return { text: "❌ לא מצאתי משתמש עם המייל הזה במערכת." };
         }
         const professionalRoles = ['AGENT', 'LANDLORD', 'SELLER'];
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:4200';
+        
         if (professionalRoles.includes(user.role)) {
             return { 
                 text: "היי! ניהול הנכסים שלך מתבצע כעת דרך האפליקציה החדשה שלנו.",
-                action: 'REQUIRE_AUTH' // ה-Service יתרגם זאת לכפתור לינק לאפליקציה
+                buttons: [[{ text: "🔑 כניסה לאפליקציה", url: frontendUrl }]]
             };
         }
         
@@ -99,7 +101,7 @@ export class BotController {
             // מעדכנים את הכפתור ב-authError שהתקבל מה-Middleware
             authError.buttons = [[{ 
                 text: "🔑 כניסה מהירה לאפליקציה", 
-                web_app: { url: `https://your-app.com/login?token=${fastToken}` } 
+                web_app: { url: `${frontendUrl}/login?token=${fastToken}` } 
             }]];
             return authError;
         }
