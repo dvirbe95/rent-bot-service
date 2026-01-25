@@ -9,40 +9,121 @@ import {
   BotResponse,
 } from "../../common/interfaces/messaging.interface";
 import { CalendarService } from "../../modules/calendar/calendar.service";
+import { NotificationService } from "../../modules/notifications/notification.service";
+import { NotificationType } from "@prisma/client";
 
 export class TelegramService implements IMessagingService {
   private bot: Telegraf;
   private apartmentRepository: ApartmentRepository;
   private userRepository: UserRepository;
   private calendarService: CalendarService;
+  private notificationService?: NotificationService;
   private prisma = PrismaService.getClient();
 
-  constructor(token: string, private controller: any, private app: any) {
+  constructor(token: string, private controller: any, private app: any, notificationService?: NotificationService) {
     this.bot = new Telegraf(token);
     this.apartmentRepository = new ApartmentRepository();
     this.userRepository = new UserRepository();
     this.calendarService = new CalendarService();
+    this.notificationService = notificationService;
+  }
+
+  setNotificationService(service: NotificationService) {
+    this.notificationService = service;
   }
 
   async init() {
     this.bot.on("text", async (ctx) => {
       const chatId = ctx.chat.id.toString();
       const userName = ctx.from.first_name;
+      const text = ctx.message.text;
 
+      console.log(`📩 Incoming message from ${userName} (${chatId}): "${text}"`);
+
+      // 1. שליפת המשתמש והדירה האקטיבית קודם כל
+      let user = await this.userRepository.getOrCreateUser(chatId, userName);
+      let activeApartmentId = (user.metadata as any)?.active_apartment_id;
+
+      // --- תיקון קריטי: אם מדובר בפקודת /start, נתעלם מהסטטוס הקודם ונאפס אותו ---
+      if (text.startsWith('/start')) {
+          await this.userRepository.updateStep(chatId, 'START');
+          user.current_step = 'START';
+      }
+
+      // 2. בדיקה האם המשתמש נמצא בסטטוס של "שליחת הודעה לבעלים" (ורק אם זו לא פקודת מערכת)
+      if (user.current_step === 'WAITING_FOR_OWNER_MESSAGE' && activeApartmentId && this.notificationService && !text.startsWith('/')) {
+        console.log(`✉️ Forwarding direct message from ${userName} to owner of apartment ${activeApartmentId}`);
+        const apartment = await this.apartmentRepository.getById(activeApartmentId);
+        if (apartment) {
+            const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
+            const lead = await leadRepo.getOrCreateLead(activeApartmentId, chatId, userName);
+
+            await this.notificationService.queueNotification({
+                userId: apartment.userId,
+                type: NotificationType.NEW_MESSAGE,
+                title: '💬 הודעה ישירה מלקוח',
+                message: `${userName}: "${text}"`,
+                payload: { leadId: lead.id, apartmentId: apartment.id }
+            });
+            
+            await leadRepo.addMessage(lead.id, {
+                senderType: "TENANT",
+                content: text
+            });
+
+            await this.userRepository.updateStep(chatId, 'START');
+            await ctx.reply("ההודעה שלך הועברה ישירות לבעלי הנכס. הוא יחזור אליך בהקדם! ✨");
+            
+            return await this.sendApartmentMenu(ctx, apartment);
+        }
+      }
+
+      // 3. המשך ללוגיקה הרגילה (AI וכו')
       const response = await this.controller.handleMessage(
         chatId,
-        ctx.message.text,
+        text,
         userName
       );
 
-      // --- הוספת לוגיקת לידים ---
-      const user = await this.userRepository.getOrCreateUser(chatId, userName);
-      const activeApartmentId = (user.metadata as any)?.active_apartment_id;
-      
+      // עדכון המשתמש והדירה האקטיבית אחרי הטיפול (למקרה של /start link_ וכו')
+      user = await this.userRepository.getOrCreateUser(chatId, userName);
+      activeApartmentId = (user.metadata as any)?.active_apartment_id;
+
+      // --- הוספת לוגיקת לידים להודעות רגילות ---
       if (activeApartmentId) {
           const leadRepo = new (await import("../../modules/client-leads/client-lead.repository")).ClientLeadRepository();
-          const lead = await leadRepo.getOrCreateLead(activeApartmentId, ctx.chat.id.toString(), ctx.from.first_name);
+          const existingLead = await leadRepo.findByApartmentAndTenant(activeApartmentId, chatId);
+          const lead = await leadRepo.getOrCreateLead(activeApartmentId, ctx.chat.id.toString(), userName);
           
+          if (this.notificationService) {
+            const apartment = await this.apartmentRepository.getById(activeApartmentId);
+            if (apartment) {
+                const now = new Date();
+                const lastInteracted = existingLead?.lastMessageAt ? new Date(existingLead.lastMessageAt) : null;
+                
+                // שליחת התראה רק אם זה ליד חדש או אם עבר זמן מסוים מאז האינטראקציה האחרונה (למשל 3 שעות)
+                const shouldNotifyAgain = !lastInteracted || (now.getTime() - lastInteracted.getTime() > 3 * 60 * 60 * 1000);
+
+                if (!existingLead) {
+                    await this.notificationService.queueNotification({
+                        userId: apartment.userId,
+                        type: NotificationType.NEW_LEAD,
+                        title: '👤 ליד חדש בטלגרם!',
+                        message: `הלקוח ${userName} התעניין בדירה שלך ב${apartment.city}.`,
+                        payload: { leadId: lead.id, apartmentId: apartment.id }
+                    });
+                } else if (shouldNotifyAgain) {
+                    await this.notificationService.queueNotification({
+                        userId: apartment.userId,
+                        type: NotificationType.SYSTEM_ALERT,
+                        title: '👀 ליד חזר לצפות בנכס',
+                        message: `הלקוח ${userName} חזר להתעניין בדירה שלך ב${apartment.city}.`,
+                        payload: { leadId: lead.id, apartmentId: apartment.id }
+                    });
+                }
+            }
+          }
+
           // שמירת ההודעה בהיסטוריית הליד
           await leadRepo.addMessage(lead.id, {
               senderType: "TENANT",
@@ -69,15 +150,12 @@ export class TelegramService implements IMessagingService {
 
       await this.sendMessage(ctx.chat.id.toString(), response);
 
-      const lastApartmentId = (user.metadata as any)?.active_apartment_id ;
-      if (!lastApartmentId) return;
-
-      const apartment = (await this.apartmentRepository.getById(
-        lastApartmentId
-      )) as any;
-
-      if (apartment) {
-        return await this.sendApartmentMenu(ctx, apartment);
+      // רק אם לא הוצג כבר תפריט מה-Flow, נציג אותו כאן
+      if (activeApartmentId && response.action !== 'SHOW_MENU') {
+        const apartment = (await this.apartmentRepository.getById(activeApartmentId)) as any;
+        if (apartment) {
+          return await this.sendApartmentMenu(ctx, apartment);
+        }
       }
     });
 
@@ -185,6 +263,13 @@ export class TelegramService implements IMessagingService {
         );
       }
 
+      if (data === "contact_owner") {
+        await this.userRepository.updateStep(chatId, 'WAITING_FOR_OWNER_MESSAGE');
+        await ctx.reply(
+          "✉️ **כתוב את ההודעה שלך לבעלי הנכס:**\n(אני אעביר לו אותה מיד והוא יראה אותה באפליקציה שלו)"
+        );
+      }
+
       // לוגיקת תיאום סיור
       if (data.startsWith("book_slot_")) {
         const timestamp = data.replace("book_slot_", "");
@@ -240,6 +325,17 @@ export class TelegramService implements IMessagingService {
               });
               console.log(`✅ Meeting created in DB: ${meeting.id}`);
 
+              // 4. שליחת התראה לבעל הנכס
+              if (this.notificationService) {
+                await this.notificationService.queueNotification({
+                    userId: owner.id,
+                    type: NotificationType.NEW_MEETING,
+                    title: '📅 פגישה חדשה נקבעה!',
+                    message: `הלקוח ${ctx.from.first_name} קבע איתך סיור ב${apartment.city} ליום ${dateStr} בשעה ${timeStr}.`,
+                    payload: { meetingId: meeting.id, apartmentId: apartment.id }
+                });
+              }
+
               // 2. עדכון סטטוס הליד
               await leadRepo.updateStatus(lead.id, "VIEWING_SCHEDULED");
 
@@ -255,7 +351,8 @@ export class TelegramService implements IMessagingService {
                     city: apartment.city,
                     tenantName: ctx.from.first_name,
                     start: selectedDate,
-                    apartment: apartment
+                    apartment: apartment,
+                    type: NotificationType.NEW_MEETING
                   });
                   console.log('✅ Nodemailer invitation sent.');
                 } catch (mailErr) {
@@ -440,16 +537,22 @@ const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה �
     // this.bot.launch();
   }
 
-  async sendMessage(chatId: string, response: BotResponse) {
-    const markup = response.buttons
+  async sendMessage(chatId: string, response: BotResponse | string) {
+    const text = typeof response === 'string' ? response : response.text;
+    
+    // אם זו הודעה ריקה ואין כפתורים, אין מה לשלוח
+    if (!text && !(typeof response === 'object' && response.buttons)) return;
+
+    const markup = (typeof response === 'object' && response.buttons)
       ? { inline_keyboard: response.buttons }
       : undefined;
-    await this.bot.telegram.sendMessage(chatId, response.text, {
+
+    await this.bot.telegram.sendMessage(chatId, text || "בחר אפשרות:", {
       parse_mode: "HTML",
       reply_markup: markup,
     });
 
-    if (response.action === "SEND_IMAGES") {
+    if (typeof response === 'object' && response.action === "SEND_IMAGES") {
       await this.sendMedia(chatId, response.data);
     }
   }
@@ -489,7 +592,8 @@ const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה �
     const buttons: any[] = [
         [{ text: "📸 תמונות", callback_data: "get_media" }],
         [{ text: "📅 תיאום סיור", callback_data: "get_slots" }],
-        [{ text: "❓ שאל שאלה", callback_data: "ask_question" }]
+        [{ text: "❓ שאל שאלה", callback_data: "ask_question" }],
+        [{ text: "✉️ שלח הודעה לבעלים", callback_data: "contact_owner" }]
     ];
 
     if (!isLocal) {

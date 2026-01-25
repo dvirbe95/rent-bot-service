@@ -126,4 +126,13 @@ export class ClientLeadRepository {
       tenantName,
     });
   }
+
+  async findByApartmentAndTenant(apartmentId: string, tenantChatId: string) {
+    return await this.prisma.clientLead.findFirst({
+      where: {
+        apartmentId,
+        tenantChatId,
+      },
+    });
+  }
 }

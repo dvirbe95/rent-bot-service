@@ -8,6 +8,7 @@ import postRoutes from '../../presentation/http/posts/post.routes';
 import meetingRoutes from '../../presentation/http/meetings/meeting.routes';
 import uploadRoutes from '../../presentation/http/upload/upload.routes';
 import paymentRoutes from '../../presentation/http/payments/payment.routes';
+import notificationRoutes from '../../modules/notifications/http/notification.routes';
 
 const rootRouter = Router();
 
@@ -20,5 +21,6 @@ rootRouter.use('/posts', postRoutes);
 rootRouter.use('/meetings', meetingRoutes);
 rootRouter.use('/upload', uploadRoutes);
 rootRouter.use('/payments', paymentRoutes);
+rootRouter.use('/notifications', notificationRoutes);
 
 export default rootRouter;

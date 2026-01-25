@@ -20,7 +20,8 @@ export class TenantFlow extends BaseFlow {
         const buttons: any[] = [
             [{ text: "📸 תמונות בבוט", callback_data: "get_media" }],
             [{ text: "📅 תיאום סיור", callback_data: "get_slots" }],
-            [{ text: "❓ שאל שאלה", callback_data: "ask_question" }]
+            [{ text: "❓ שאל שאלה", callback_data: "ask_question" }],
+            [{ text: "✉️ שלח הודעה לבעלים", callback_data: "contact_owner" }]
         ];
 
         if (!isLocal) {
@@ -28,8 +29,8 @@ export class TenantFlow extends BaseFlow {
         }
 
         const textResponse = isLocal 
-            ? `🏠 **נכס ב-${apartment.city}**\n${apartment.description}\n\n🔗 **לינק לפרופיל:** ${publicUrl}\n\nמה תרצה לעשות?`
-            : `🏠 **נכס ב-${apartment.city}**\n${apartment.description}\n\nמה תרצה לעשות?`;
+            ? `<b>🏠 נכס ב-${apartment.city}</b>\n${apartment.description}\n\n🔗 <b>לינק לפרופיל:</b> ${publicUrl}\n\nמה תרצה לעשות?`
+            : `<b>🏠 נכס ב-${apartment.city}</b>\n${apartment.description}\n\nמה תרצה לעשות?`;
 
         return { 
             text: textResponse, 

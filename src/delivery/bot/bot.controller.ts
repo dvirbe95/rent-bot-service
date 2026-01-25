@@ -24,6 +24,11 @@ export class BotController {
     async handleMessage(chatId: string, text: string, userName: string) {
         const user = await this.userRepo.getOrCreateUser(chatId);
 
+        // --- בדיקה מיוחדת: אם המשתמש במצב שליחת הודעה לבעלים, אל תענה תשובה מה-AI (אלא אם זו פקודת מערכת) ---
+        if (user.current_step === 'WAITING_FOR_OWNER_MESSAGE' && !text.startsWith('/')) {
+            return { text: '' }; 
+        }
+
         // --- שלב 0: טיפול בלינק עמוק (Deep Linking) ---
         if (text.startsWith('/start link_')) {
             const userId = text.replace('/start link_', '').trim();
