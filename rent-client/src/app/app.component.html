@@ -62,6 +62,44 @@
         <mat-icon aria-label="Side nav toggle icon">menu</mat-icon>
       </button>
       <span>ניהול נדל"ן חכם</span>
+      
+      <span class="toolbar-spacer"></span>
+
+      <!-- פעמון התראות -->
+      <button mat-icon-button [matMenuTriggerFor]="notifMenu" class="notif-btn">
+        <mat-icon [matBadge]="notificationService.unreadCount$ | async" 
+                  matBadgeColor="warn" 
+                  [matBadgeHidden]="(notificationService.unreadCount$ | async) === 0">
+          notifications
+        </mat-icon>
+      </button>
+
+      <mat-menu #notifMenu="matMenu" class="notification-menu">
+        <div class="notif-header">
+          <h3>התראות</h3>
+          <button mat-button color="primary" (click)="markAllAsRead()">סמן הכל כנקרא</button>
+        </div>
+        <mat-divider></mat-divider>
+        
+        <div class="notif-list" *ngIf="(notificationService.notifications$ | async)?.length; else noNotifs">
+          <button mat-menu-item *ngFor="let notif of (notificationService.notifications$ | async)" 
+                  [class.unread]="!notif.isRead"
+                  (click)="markAsRead(notif.id)">
+            <mat-icon [color]="notif.type === 'NEW_MEETING' ? 'primary' : 'accent'">
+              {{ notif.type === 'NEW_MEETING' ? 'calendar_today' : 'person_add' }}
+            </mat-icon>
+            <div class="notif-content">
+              <div class="notif-title">{{ notif.title }}</div>
+              <div class="notif-message">{{ notif.message }}</div>
+              <div class="notif-time">{{ notif.createdAt | date:'shortTime' }}</div>
+            </div>
+          </button>
+        </div>
+
+        <ng-template #noNotifs>
+          <div class="no-notifs-msg">אין התראות חדשות</div>
+        </ng-template>
+      </mat-menu>
     </mat-toolbar>
     <div class="main-content">
       <router-outlet></router-outlet>

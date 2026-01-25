@@ -1,68 +1,104 @@
 .sidenav-container {
-  height: 100vh;
-  direction: rtl;
+  height: 100%;
 }
 
 .sidenav {
   width: 250px;
-  background-color: white;
-  border-left: 1px solid rgba(0,0,0,0.12);
-  
-  .mat-toolbar {
-    background: white;
-    color: #3f51b5;
-    font-weight: bold;
-    border-bottom: 1px solid rgba(0,0,0,0.12);
-  }
 }
 
-.mat-nav-list {
-  padding-top: 0;
+.sidenav .mat-toolbar {
+  background: inherit;
+}
 
-  .mat-list-item {
-    margin: 4px 8px;
-    border-radius: 8px;
-    width: auto;
+.mat-toolbar.mat-primary {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
 
-    &.active {
-      color: #3f51b5;
-      background-color: rgba(63, 81, 181, 0.08);
-      
-      mat-icon {
-        color: #3f51b5;
-      }
-    }
-  }
+.toolbar-spacer {
+  flex: 1 1 auto;
 }
 
 .main-content {
-  padding: 16px;
+  padding: 20px;
   min-height: calc(100vh - 64px);
-  background-color: #f8fafc;
-}
-
-@media (max-width: 600px) {
-  .main-content {
-    padding: 12px;
-  }
-  
-  .sidenav {
-    width: 280px;
-  }
+  background-color: #f5f5f5;
 }
 
 .tenant-msg {
   padding: 16px;
-  color: #64748b;
-  font-size: 0.9rem;
-  line-height: 1.5;
-  text-align: center;
-  background: #f1f5f9;
-  border-radius: 12px;
-  margin: 12px;
-  border: 1px dashed #cbd5e1;
+  font-size: 14px;
+  color: #666;
+  line-height: 1.4;
 }
 
-.auth-container {
-  min-height: 100vh;
+/* Notification Menu Styles */
+.notification-menu {
+  width: 350px;
+  max-height: 500px;
+}
+
+.notif-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  
+  h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 500;
+  }
+}
+
+.notif-list {
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.notif-btn {
+  margin-left: 8px;
+}
+
+button[mat-menu-item].unread {
+  background-color: #e3f2fd;
+  font-weight: 500;
+}
+
+.notif-content {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+  padding: 8px 0;
+  white-space: normal;
+  
+  .notif-title {
+    font-weight: bold;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  
+  .notif-message {
+    font-size: 13px;
+    color: #555;
+    margin-bottom: 4px;
+  }
+  
+  .notif-time {
+    font-size: 11px;
+    color: #999;
+  }
+}
+
+.no-notifs-msg {
+  padding: 20px;
+  text-align: center;
+  color: #888;
+}
+
+@media (max-width: 599px) {
+  .notification-menu {
+    width: 280px;
+  }
 }

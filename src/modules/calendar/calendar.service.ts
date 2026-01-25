@@ -60,16 +60,49 @@ export class CalendarService {
     },
   });
 
-  async sendEmailNotification(emails: string[], details: any) {
-    if (!emails || emails.length === 0 || !emails.some(e => !!e)) {
+  async sendEmailNotification(emails: string | string[], details: any) {
+    const emailList = Array.isArray(emails) ? emails : [emails];
+    
+    if (!emailList || emailList.length === 0 || !emailList.some(e => !!e)) {
         console.warn('⚠️ No valid emails provided for notification');
         return;
     }
+
+    // אם זו התראה כללית ולא פגישה
+    if (details.type !== 'NEW_MEETING' && !details.start) {
+        const mailOptions = {
+            from: `"RentBot" <${process.env.EMAIL_USER}>`,
+            to: emailList,
+            subject: details.title || 'התראה חדשה מ-RentBot 🔔',
+            html: `
+                <div dir="rtl" style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                    <h1 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">${details.title}</h1>
+                    <p style="font-size: 1.1em; white-space: pre-wrap;">${details.message}</p>
+                    <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+                    <p style="font-size: 0.8em; color: #7f8c8d;">נשלח באופן אוטומטי על ידי RentBot</p>
+                </div>
+            `
+        };
+        return await this.transporter.sendMail(mailOptions);
+    }
     
-    const startTime = new Date(details.start);
+    // לוגיקה קיימת עבור פגישות
+    const rawStart = details.start || details.payload?.meetingTime;
+    const startTime = new Date(rawStart);
+
+    if (!rawStart || isNaN(startTime.getTime())) {
+        // אם זה NEW_MEETING אבל אין תאריך תקין, נהפוך את זה להתראה רגילה כדי למנוע לולאה אינסופית
+        const backupDetails = {
+            ...details,
+            type: 'SYSTEM_ALERT',
+            start: null
+        };
+        return this.sendEmailNotification(emails, backupDetails);
+    }
+
     const endTime = new Date(startTime.getTime() + 30 * 60000); // פגישה של 30 דקות
     
-    const apartment = details.apartment;
+    const apartment = details.apartment || details.payload?.apartment;
     const fullAddress = apartment?.address ? `${apartment.address}, ${apartment.city}` : apartment?.city;
     const wazeLink = `https://waze.com/ul?q=${encodeURIComponent(fullAddress || '')}`;
     

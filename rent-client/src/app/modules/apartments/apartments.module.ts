@@ -24,7 +24,8 @@ import { MatDividerModule } from '@angular/material/divider';
 const routes: Routes = [
   { path: '', component: ApartmentListComponent },
   { path: 'create', component: ApartmentCreateComponent },
-  { path: 'edit/:id', component: ApartmentCreateComponent }
+  { path: 'edit/:id', component: ApartmentCreateComponent },
+  { path: 'view/:id', component: ApartmentCreateComponent }
 ];
 
 @NgModule({

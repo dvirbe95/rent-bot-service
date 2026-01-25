@@ -5,6 +5,7 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { Observable } from 'rxjs';
 import { map, shareReplay } from 'rxjs/operators';
 import { MatSidenav } from '@angular/material/sidenav';
+import { NotificationService } from './core/services/notification.service';
 
 @Component({
   selector: 'app-root',
@@ -24,12 +25,21 @@ export class AppComponent {
   constructor(
     public authService: AuthService, 
     private router: Router,
-    private breakpointObserver: BreakpointObserver
+    private breakpointObserver: BreakpointObserver,
+    public notificationService: NotificationService
   ) {}
 
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  markAsRead(id: string) {
+    this.notificationService.markAsRead(id).subscribe();
+  }
+
+  markAllAsRead() {
+    this.notificationService.markAllAsRead().subscribe();
   }
 
   closeSidenavOnMobile() {

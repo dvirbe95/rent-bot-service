@@ -18,6 +18,7 @@ model User {
   role            UserRole @default(USER)
   apartments      Apartment[]
   posts           Post[]
+  notifications   Notification[]
   metadata        Json?
   current_step    String?  @default("START")
   subscriptionStatus Boolean @default(false)
@@ -149,6 +150,26 @@ model Post {
   @@map("posts")
 }
 
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String
+  user      User               @relation(fields: [userId], references: [id])
+  type      NotificationType
+  title     String
+  message   String
+  status    NotificationStatus @default(PENDING)
+  isRead    Boolean            @default(false)
+  payload   Json?
+  attempts  Int                @default(0)
+  error     String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([status, createdAt])
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
 enum UserRole {
   USER
   AGENT
@@ -184,4 +205,17 @@ enum MeetingStatus {
   CONFIRMED
   COMPLETED
   CANCELLED
+}
+
+enum NotificationType {
+  NEW_LEAD
+  NEW_MEETING
+  NEW_MESSAGE
+  SYSTEM_ALERT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
 }
