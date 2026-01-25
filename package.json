@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch index.ts",
     "start": "tsx index.ts",
-    "build": "echo 'No build needed for tsx'",
+    "build": "prisma generate && cd rent-client && npm install && npm run build",
     "postinstall": "prisma generate"
   },
   "keywords": [],
