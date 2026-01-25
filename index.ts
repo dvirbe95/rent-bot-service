@@ -4,6 +4,7 @@ dotenv.config();
 
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
 import rootRouter from './src/delivery/http/router';
 import { RagService } from './src/modules/rag/rag.service';
 import { mockLogin } from './src/modules/users/user.controller';
@@ -46,6 +47,18 @@ async function main() {
     // 4. הגדרת נתיבי API
     app.use('/api', rootRouter);
     app.post('/api/users/mock-login', mockLogin);
+
+    // 5. הגשת קבצי ה-Frontend (Angular)
+    // אנחנו מניחים שאחרי ה-build הקבצים יהיו בתיקיית dist/rent-client/browser
+    const frontendPath = path.resolve('rent-client/dist/rent-client/browser');
+    app.use(express.static(frontendPath));
+
+    // תמיכה ב-Client-side routing של אנגולר - כל נתיב שלא מוכר כ-API יחזיר את ה-index.html
+    app.get('*', (req, res) => {
+        if (!req.path.startsWith('/api')) {
+            res.sendFile(path.join(frontendPath, 'index.html'));
+        }
+    });
 
     const PORT = process.env.PORT || 3000;
     app.listen(PORT, () => {
