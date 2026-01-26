@@ -127,6 +127,34 @@
             </div>
           </div>
         </div>
+
+        <!-- Health Clinics -->
+        <div class="info-group" *ngIf="apartment.neighborhoodData.healthClinics?.length">
+          <div class="group-header">
+            <mat-icon>local_hospital</mat-icon>
+            <span>מרפאות וקופות חולים</span>
+          </div>
+          <div class="info-list">
+            <div class="info-item" *ngFor="let clinic of apartment.neighborhoodData.healthClinics">
+              <span class="item-name">{{clinic.name}}</span>
+              <span class="item-meta">{{clinic.type}} • {{clinic.address}}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Sales -->
+        <div class="info-group" *ngIf="apartment.neighborhoodData.recentSales?.length">
+          <div class="group-header">
+            <mat-icon>analytics</mat-icon>
+            <span>עסקאות נדל"ן אחרונות באזור</span>
+          </div>
+          <div class="info-list">
+            <div class="info-item sale" *ngFor="let sale of apartment.neighborhoodData.recentSales">
+              <span class="item-name">{{sale.price}}</span>
+              <span class="item-meta">{{sale.address}} • {{sale.date}}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

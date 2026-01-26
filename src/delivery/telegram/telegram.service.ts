@@ -521,19 +521,36 @@ export class TelegramService implements IMessagingService {
       }
     });
 
-const domain = process.env.RENDER_EXTERNAL_URL; // Render מספקת את זה אוטומטית
+    const domain = process.env.RENDER_EXTERNAL_URL; 
 
     if (domain) {
       // הגדרת Webhook לסביבת Production (Render)
       const webhookPath = `/telegraf/${this.bot.secretPathComponent()}`;
-      await this.bot.telegram.setWebhook(`${domain}${webhookPath}`);
+      await this.bot.telegram.setWebhook(`${domain}${webhookPath}`, {
+        drop_pending_updates: true // מנקה הודעות ישנות כדי למנוע הצפה
+      });
       this.app.use(this.bot.webhookCallback(webhookPath));
       console.log(`📡 Webhook set to: ${domain}${webhookPath}`);
     } else {
       // עבודה ב-Polling לסביבת פיתוח מקומית
-      await this.bot.telegram.deleteWebhook(); // מחיקת Webhook ישן כדי למנוע קונפליקט
-      this.bot.launch();
-      console.log("🤖 Bot started in Polling mode (Local)");
+      try {
+        console.log("🔄 Cleaning up old webhooks...");
+        await this.bot.telegram.deleteWebhook({ drop_pending_updates: true });
+        
+        // התחלת הבוט ב-Polling
+        this.bot.launch({
+            dropPendingUpdates: true
+        }).catch(err => {
+            if (err.response?.error_code === 409) {
+                console.warn("⚠️ Telegram Conflict: Another instance is running. Polling might be unstable.");
+            } else {
+                throw err;
+            }
+        });
+        console.log("🤖 Bot started in Polling mode (Local)");
+      } catch (err) {
+        console.error("❌ Error during local bot startup:", err);
+      }
     }
 
     // this.bot.launch();

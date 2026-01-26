@@ -54,10 +54,8 @@ async function main() {
     app.use(express.static(frontendPath));
 
     // תמיכה ב-Client-side routing של אנגולר - כל נתיב שלא מוכר כ-API יחזיר את ה-index.html
-    app.get('/:any*', (req, res) => {
-        if (!req.path.startsWith('/api')) {
-            res.sendFile(path.join(frontendPath, 'index.html'));
-        }
+    app.get(/^(?!\/api).+/, (req, res) => {
+        res.sendFile(path.join(frontendPath, 'index.html'));
     });
 
     const PORT = Number(process.env.PORT) || 3000;
