@@ -11,6 +11,11 @@ export class GovDataService {
     private readonly HEALTH_CLINICS_RES_ID = '6267885b-a78b-49c0-ac3b-0105391c4d44'; // מוסדות בריאות
     private readonly REAL_ESTATE_SALES_RES_ID = 'adbc318d-950c-4822-9f6f-6c174f179b09'; // עסקאות נדל"ן
 
+    // Max Relevance Radius (in KM)
+    private readonly MAX_DIST_BUS = 0.8;    // 800m
+    private readonly MAX_DIST_SCHOOL = 2.5; // 2.5km
+    private readonly MAX_DIST_CLINIC = 3.0; // 3km
+
     /**
      * Helper to calculate distance in KM between two points
      */
@@ -52,10 +57,11 @@ export class GovDataService {
                         name: r.InstituteName || "מרפאה",
                         type: r.InstituteType || "בריאות",
                         address: r.Address || city,
-                        distance: distance.toFixed(2)
+                        distance: parseFloat(distance.toFixed(2))
                     };
                 })
-                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .filter((r: any) => r.distance <= this.MAX_DIST_CLINIC) // סינון לפי מרחק מקסימלי
+                .sort((a: any, b: any) => a.distance - b.distance)
                 .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Health clinics failed for ${city}`);
@@ -112,10 +118,11 @@ export class GovDataService {
                     return {
                         name: r.StationTypeName || r.StreetName || "תחנת אוטובוס",
                         lines: r.LineNumber || "קווים עירוניים",
-                        distance: distance.toFixed(2)
+                        distance: parseFloat(distance.toFixed(2))
                     };
                 })
-                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .filter((r: any) => r.distance <= this.MAX_DIST_BUS) // סינון: רק מה שקרוב באמת
+                .sort((a: any, b: any) => a.distance - b.distance)
                 .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Bus stops failed for ${city}`);
@@ -148,10 +155,11 @@ export class GovDataService {
                         name: r.NAME || "מוסד חינוך",
                         type: r.USG_GROUP || "חינוך",
                         address: r.STREET_NAME ? `${r.STREET_NAME} ${r.HOUSE_NUM || ''}` : city,
-                        distance: distance.toFixed(2)
+                        distance: parseFloat(distance.toFixed(2))
                     };
                 })
-                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .filter((r: any) => r.distance <= this.MAX_DIST_SCHOOL) // סינון: רק מה שרלוונטי למשפחה
+                .sort((a: any, b: any) => a.distance - b.distance)
                 .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Schools failed for ${city}`);

@@ -16,7 +16,7 @@ export interface Meeting {
   providedIn: 'root'
 })
 export class MeetingService {
-  private apiUrl = 'http://localhost:3000/api/meetings';
+  private apiUrl = 'https://rent-bot-service-cncl.onrender.com/api/meetings';
 
   constructor(private http: HttpClient) { }
 

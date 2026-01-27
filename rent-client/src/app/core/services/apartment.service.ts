@@ -100,7 +100,7 @@ export interface ApartmentFilters {
   providedIn: 'root'
 })
 export class ApartmentService {
-  private apiUrl = 'http://localhost:3000/api/apartments';
+  private apiUrl = 'https://rent-bot-service-cncl.onrender.com/api/apartments';
 
   constructor(private http: HttpClient) {}
 

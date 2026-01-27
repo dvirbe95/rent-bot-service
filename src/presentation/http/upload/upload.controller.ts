@@ -11,7 +11,7 @@ export class UploadController {
 
       const fileType = req.body.type || 'images'; // images or documents
       const fileName = req.file.filename;
-      const publicUrl = `http://localhost:3000/uploads/${fileType}/${fileName}`;
+      const publicUrl = `https://rent-bot-service-cncl.onrender.com/uploads/${fileType}/${fileName}`;
 
       res.json({
         success: true,

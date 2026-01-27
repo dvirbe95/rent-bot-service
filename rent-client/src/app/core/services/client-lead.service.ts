@@ -43,7 +43,7 @@ export interface LeadFilters {
   providedIn: 'root'
 })
 export class ClientLeadService {
-  private apiUrl = 'http://localhost:3000/api/client-leads';
+  private apiUrl = 'https://rent-bot-service-cncl.onrender.com/api/client-leads';
 
   constructor(private http: HttpClient) {}
 

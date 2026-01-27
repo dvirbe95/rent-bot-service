@@ -6,7 +6,7 @@ import { firstValueFrom } from 'rxjs';
   providedIn: 'root'
 })
 export class FileStorageService {
-  private apiUrl = 'http://localhost:3000/api/upload';
+  private apiUrl = 'https://rent-bot-service-cncl.onrender.com/api/upload';
 
   constructor(private http: HttpClient) {}
 

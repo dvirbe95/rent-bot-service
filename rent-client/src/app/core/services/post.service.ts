@@ -28,7 +28,7 @@ export interface PublishPostDto {
   providedIn: 'root'
 })
 export class PostService {
-  private apiUrl = 'http://localhost:3000/api/posts';
+  private apiUrl = 'https://rent-bot-service-cncl.onrender.com0/api/posts';
 
   constructor(private http: HttpClient) {}
 
