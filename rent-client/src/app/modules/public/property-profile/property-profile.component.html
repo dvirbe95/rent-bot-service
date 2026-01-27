@@ -95,7 +95,7 @@
           <div class="info-list">
             <div class="info-item" *ngFor="let stop of apartment.neighborhoodData.busStops">
               <span class="item-name">{{stop.name}}</span>
-              <span class="item-meta">קווים: {{stop.lines}}</span>
+              <span class="item-meta">קווים: {{stop.lines}} • <b>{{stop.distance}} ק"מ</b></span>
             </div>
           </div>
         </div>
@@ -109,7 +109,7 @@
           <div class="info-list">
             <div class="info-item" *ngFor="let school of apartment.neighborhoodData.schools">
               <span class="item-name">{{school.name}}</span>
-              <span class="item-meta">{{school.type}} • {{school.address}}</span>
+              <span class="item-meta">{{school.type}} • {{school.address}} • <b>{{school.distance}} ק"מ</b></span>
             </div>
           </div>
         </div>
@@ -137,7 +137,7 @@
           <div class="info-list">
             <div class="info-item" *ngFor="let clinic of apartment.neighborhoodData.healthClinics">
               <span class="item-name">{{clinic.name}}</span>
-              <span class="item-meta">{{clinic.type}} • {{clinic.address}}</span>
+              <span class="item-meta">{{clinic.type}} • {{clinic.address}} • <b>{{clinic.distance}} ק"מ</b></span>
             </div>
           </div>
         </div>

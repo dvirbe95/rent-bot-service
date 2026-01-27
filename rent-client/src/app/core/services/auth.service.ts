@@ -3,6 +3,7 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, tap } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -23,7 +24,7 @@ export class AuthService {
 
   // עדכן גם את שאר הפונקציות שמשתמשות ב-localStorage
   login(credentials: any) {
-    return this.http.post<any>(`http://localhost:3000/api/auth/login`, credentials).pipe(
+    return this.http.post<any>(`${environment.apiUrl}/auth/login`, credentials).pipe(
       tap(res => {
         if (isPlatformBrowser(this.platformId) && res.token) {
           localStorage.setItem('token', res.token);
@@ -35,7 +36,7 @@ export class AuthService {
   }
 
   register(userData: any) {
-    return this.http.post<any>(`http://localhost:3000/api/auth/register`, userData).pipe(
+    return this.http.post<any>(`${environment.apiUrl}/auth/register`, userData).pipe(
       tap(res => {
         if (isPlatformBrowser(this.platformId) && res.token) {
           localStorage.setItem('token', res.token);
