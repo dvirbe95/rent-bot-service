@@ -23,19 +23,23 @@ export class PaymentController {
     async createPaymentIntent(req: Request, res: Response) {
         try {
             const { amount, currency = 'ils' } = req.body;
+            
+            // בדיקה אם קיים מפתח Stripe, אם לא - נחזיר סוד פיקטיבי לצורכי פיתוח
+            if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'your_stripe_secret_key') {
+                console.log('⚠️ Stripe Key missing, using mock payment intent');
+                return res.json({
+                    clientSecret: 'mock_secret_' + Math.random().toString(36).substring(7),
+                });
+            }
+
             const stripe = this.getStripe();
-
             const paymentIntent = await stripe.paymentIntents.create({
-                amount: amount * 100, // Stripe works with cents/agorot
+                amount: amount * 100,
                 currency,
-                automatic_payment_methods: {
-                    enabled: true,
-                },
+                automatic_payment_methods: { enabled: true },
             });
 
-            res.json({
-                clientSecret: paymentIntent.client_secret,
-            });
+            res.json({ clientSecret: paymentIntent.client_secret });
         } catch (error: any) {
             console.error('Stripe Error:', error);
             res.status(500).json({ error: error.message });

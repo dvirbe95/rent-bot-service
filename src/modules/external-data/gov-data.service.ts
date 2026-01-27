@@ -12,24 +12,51 @@ export class GovDataService {
     private readonly REAL_ESTATE_SALES_RES_ID = 'adbc318d-950c-4822-9f6f-6c174f179b09'; // עסקאות נדל"ן
 
     /**
+     * Helper to calculate distance in KM between two points
+     */
+    private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+        if (!lat1 || !lon1 || !lat2 || !lon2) return 999;
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    /**
      * Fetches nearby health clinics (Kupot Cholim)
      */
-    getNearbyHealthClinics = async (city: string) => {
+    getNearbyHealthClinics = async (lat: number, lng: number, city: string) => {
         try {
             const response = await axios.get(this.BASE_URL, {
                 params: {
                     resource_id: this.HEALTH_CLINICS_RES_ID,
-                    filters: JSON.stringify({ "City": city }),
-                    limit: 5
+                    q: city,
+                    limit: 50
                 }
             });
 
             const records = response.data?.result?.records || [];
-            return records.map((r: any) => ({
-                name: r.InstituteName || "מרפאה",
-                type: r.InstituteType || "בריאות",
-                address: r.Address || city
-            }));
+            
+            return records
+                .map((r: any) => {
+                    const recordLat = parseFloat(r.Lat || r.Latitude || 0);
+                    const recordLng = parseFloat(r.Lng || r.Long || r.Longitude || 0);
+                    const distance = this.calculateDistance(lat, lng, recordLat, recordLng);
+                    
+                    return {
+                        name: r.InstituteName || "מרפאה",
+                        type: r.InstituteType || "בריאות",
+                        address: r.Address || city,
+                        distance: distance.toFixed(2)
+                    };
+                })
+                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Health clinics failed for ${city}`);
             return [];
@@ -70,20 +97,26 @@ export class GovDataService {
                 params: {
                     resource_id: this.BUS_STOPS_RES_ID,
                     q: city, // שימוש בחיפוש חופשי במקום פילטר קשיח
-                    limit: 10
+                    limit: 100
                 }
             });
 
             const records = response.data?.result?.records || [];
-            // סינון נוסף לפי שם העיר בתוצאות
-            const cityRecords = records.filter((r: any) => 
-                (r.CityName || "").includes(city) || city.includes(r.CityName || "")
-            );
+            
+            return records
+                .map((r: any) => {
+                    const recordLat = parseFloat(r.Lat || 0);
+                    const recordLng = parseFloat(r.Long || 0);
+                    const distance = this.calculateDistance(lat, lng, recordLat, recordLng);
 
-            return cityRecords.slice(0, 5).map((r: any) => ({
-                name: r.StationTypeName || r.StreetName || "תחנת אוטובוס",
-                lines: r.LineNumber || "קווים עירוניים",
-            }));
+                    return {
+                        name: r.StationTypeName || r.StreetName || "תחנת אוטובוס",
+                        lines: r.LineNumber || "קווים עירוניים",
+                        distance: distance.toFixed(2)
+                    };
+                })
+                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Bus stops failed for ${city}`);
             return [];
@@ -93,26 +126,33 @@ export class GovDataService {
     /**
      * Fetches nearby schools
      */
-    getNearbySchools = async (city: string) => {
+    getNearbySchools = async (lat: number, lng: number, city: string) => {
         try {
             const response = await axios.get(this.BASE_URL, {
                 params: {
                     resource_id: this.SCHOOLS_RES_ID,
                     q: city, // שימוש בחיפוש חופשי
-                    limit: 10
+                    limit: 100
                 }
             });
 
             const records = response.data?.result?.records || [];
-            const cityRecords = records.filter((r: any) => 
-                (r.SETL_NAME || "").includes(city) || city.includes(r.SETL_NAME || "")
-            );
+            
+            return records
+                .map((r: any) => {
+                    const recordLat = parseFloat(r.LATITUDE || r.Lat || 0);
+                    const recordLng = parseFloat(r.LONGITUDE || r.Long || 0);
+                    const distance = this.calculateDistance(lat, lng, recordLat, recordLng);
 
-            return cityRecords.slice(0, 5).map((r: any) => ({
-                name: r.NAME || "מוסד חינוך",
-                type: r.USG_GROUP || "חינוך",
-                address: r.STREET_NAME ? `${r.STREET_NAME} ${r.HOUSE_NUM || ''}` : city
-            }));
+                    return {
+                        name: r.NAME || "מוסד חינוך",
+                        type: r.USG_GROUP || "חינוך",
+                        address: r.STREET_NAME ? `${r.STREET_NAME} ${r.HOUSE_NUM || ''}` : city,
+                        distance: distance.toFixed(2)
+                    };
+                })
+                .sort((a: any, b: any) => parseFloat(a.distance) - parseFloat(b.distance))
+                .slice(0, 5);
         } catch (error: any) {
             console.warn(`GovDataService: Schools failed for ${city}`);
             return [];
@@ -167,9 +207,9 @@ export class GovDataService {
         
         const [busStops, schools, urbanRenewal, healthClinics, recentSales] = await Promise.all([
             this.getNearbyBusStops(lat, lng, cleanCity),
-            this.getNearbySchools(cleanCity),
+            this.getNearbySchools(lat, lng, cleanCity),
             this.getUrbanRenewalStatus(cleanCity, address),
-            this.getNearbyHealthClinics(cleanCity),
+            this.getNearbyHealthClinics(lat, lng, cleanCity),
             this.getRecentSales(cleanCity)
         ]);
 
